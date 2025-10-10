@@ -46,7 +46,7 @@
                                 <td><?= indo_datetime($template['created_at'] ?? '') ?></td>
                                 <td>
                                     <a href="<?= route('whatsapp_config', ['action' => 'edit_template', 'id' => $template['id']]) ?>" class="btn btn-sm btn-info">Edit</a>
-                                    <form action="<?= route('whatsapp_config', ['action' => 'delete_template']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus template ini?');">
+                                    <form action="<?= route('whatsapp_config', ['action' => 'delete_template']) ?>" method="POST" class="d-inline" data-confirm="delete" data-confirm-message="Hapus template <?= sanitize($template['display_name']) ?>?">
                                         <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                         <input type="hidden" name="id" value="<?= (int) $template['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

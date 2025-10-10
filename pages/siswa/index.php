@@ -45,7 +45,7 @@
                                 <td class="text-nowrap">
                                     <a href="<?= route('siswa', ['action' => 'show', 'id' => $student['id_siswa']]) ?>" class="btn btn-sm btn-secondary">Detail</a>
                                     <a href="<?= route('siswa', ['action' => 'edit', 'id' => $student['id_siswa']]) ?>" class="btn btn-sm btn-info">Edit</a>
-                                    <form action="<?= route('siswa', ['action' => 'delete']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus data siswa ini?');">
+                                    <form action="<?= route('siswa', ['action' => 'delete']) ?>" method="POST" class="d-inline" data-confirm="delete" data-confirm-message="Hapus data siswa <?= sanitize($student['nama_siswa']) ?>?">
                                         <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                         <input type="hidden" name="id" value="<?= (int) $student['id_siswa'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

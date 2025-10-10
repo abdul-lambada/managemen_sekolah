@@ -43,7 +43,7 @@
                                 <td class="text-nowrap">
                                     <a href="<?= route('guru', ['action' => 'show', 'id' => $guru['id_guru']]) ?>" class="btn btn-sm btn-secondary">Detail</a>
                                     <a href="<?= route('guru', ['action' => 'edit', 'id' => $guru['id_guru']]) ?>" class="btn btn-sm btn-info">Edit</a>
-                                    <form action="<?= route('guru', ['action' => 'delete']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus data guru ini?');">
+                                    <form action="<?= route('guru', ['action' => 'delete']) ?>" method="POST" class="d-inline" data-confirm="delete" data-confirm-message="Hapus data guru <?= sanitize($guru['nama_guru']) ?>?">
                                         <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                         <input type="hidden" name="id" value="<?= (int) $guru['id_guru'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>

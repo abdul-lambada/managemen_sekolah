@@ -77,7 +77,7 @@
                                 <td><?= indo_datetime($device['created_at'] ?? '') ?></td>
                                 <td>
                                     <a href="<?= route('fingerprint_devices', ['action' => 'edit', 'id' => $device['id']]) ?>" class="btn btn-sm btn-info">Edit</a>
-                                    <form action="<?= route('fingerprint_devices', ['action' => 'delete']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus perangkat ini?');">
+                                    <form action="<?= route('fingerprint_devices', ['action' => 'delete']) ?>" method="POST" class="d-inline" data-confirm="delete" data-confirm-message="Hapus perangkat di lokasi <?= sanitize($device['nama_lokasi']) ?>?">
                                         <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                         <input type="hidden" name="id" value="<?= (int) $device['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
