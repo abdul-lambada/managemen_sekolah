@@ -14,6 +14,7 @@ class JurusanController extends Controller
             'edit' => $this->edit(),
             'update' => $this->update(),
             'delete' => $this->delete(),
+            'show' => $this->show(),
             default => $this->listing(),
         };
     }
@@ -42,6 +43,48 @@ class JurusanController extends Controller
                 'label' => 'Tambah Jurusan',
                 'icon' => 'fas fa-plus',
                 'variant' => 'primary',
+            ],
+        ];
+
+        return $response;
+    }
+
+    private function show(): array
+    {
+        $this->requireRole('admin');
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            flash('jurusan_alert', 'Data jurusan tidak ditemukan.', 'danger');
+            redirect(route('jurusan'));
+        }
+
+        $model = new Jurusan();
+        $jurusan = $model->find($id, 'id_jurusan');
+
+        if (!$jurusan) {
+            flash('jurusan_alert', 'Data jurusan tidak ditemukan.', 'danger');
+            redirect(route('jurusan'));
+        }
+
+        $kelasModel = new Kelas();
+        $kelasList = $kelasModel->byJurusan($id);
+
+        $response = $this->view('jurusan/show', [
+            'jurusan' => $jurusan,
+            'kelasList' => $kelasList,
+        ], 'Detail Jurusan');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Data Jurusan' => route('jurusan'),
+            'Detail Jurusan'
+        ];
+        $response['breadcrumb_actions'] = [
+            [
+                'href' => route('jurusan', ['action' => 'edit', 'id' => $id]),
+                'label' => 'Edit Jurusan',
+                'icon' => 'fas fa-edit',
+                'variant' => 'info',
             ],
         ];
 

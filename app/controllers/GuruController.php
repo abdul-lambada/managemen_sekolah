@@ -14,6 +14,7 @@ class GuruController extends Controller
             'edit' => $this->edit(),
             'update' => $this->update(),
             'delete' => $this->delete(),
+            'show' => $this->show(),
             default => $this->list(),
         };
     }
@@ -21,7 +22,6 @@ class GuruController extends Controller
     private function list(): array
     {
         $this->requireRole('admin');
-
         $guruModel = new Guru();
         $guruList = $guruModel->allWithUser();
         $csrfToken = ensure_csrf_token();
@@ -45,6 +45,44 @@ class GuruController extends Controller
             ],
         ];
         $response['scripts'] = [];
+
+        return $response;
+    }
+
+    private function show(): array
+    {
+        $this->requireRole('admin');
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            flash('guru_alert', 'Data guru tidak ditemukan.', 'danger');
+            redirect(route('guru'));
+        }
+
+        $guruModel = new Guru();
+        $guru = $guruModel->findWithUser($id);
+
+        if (!$guru) {
+            flash('guru_alert', 'Data guru tidak ditemukan.', 'danger');
+            redirect(route('guru'));
+        }
+
+        $response = $this->view('guru/show', [
+            'guru' => $guru,
+        ], 'Detail Guru');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Data Guru' => route('guru'),
+            'Detail Guru'
+        ];
+        $response['breadcrumb_actions'] = [
+            [
+                'href' => route('guru', ['action' => 'edit', 'id' => $id]),
+                'label' => 'Edit Guru',
+                'icon' => 'fas fa-edit',
+                'variant' => 'info',
+            ],
+        ];
 
         return $response;
     }

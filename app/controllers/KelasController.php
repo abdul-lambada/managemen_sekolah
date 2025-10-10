@@ -14,6 +14,7 @@ class KelasController extends Controller
             'edit' => $this->edit(),
             'update' => $this->update(),
             'delete' => $this->delete(),
+            'show' => $this->show(),
             default => $this->listing(),
         };
     }
@@ -42,6 +43,48 @@ class KelasController extends Controller
                 'label' => 'Tambah Kelas',
                 'icon' => 'fas fa-plus',
                 'variant' => 'primary',
+            ],
+        ];
+
+        return $response;
+    }
+
+    private function show(): array
+    {
+        $this->requireRole('admin');
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            flash('kelas_alert', 'Data kelas tidak ditemukan.', 'danger');
+            redirect(route('kelas'));
+        }
+
+        $model = new Kelas();
+        $kelas = $model->findWithJurusan($id);
+
+        if (!$kelas) {
+            flash('kelas_alert', 'Data kelas tidak ditemukan.', 'danger');
+            redirect(route('kelas'));
+        }
+
+        $siswaModel = new Siswa();
+        $students = $siswaModel->byKelas($id);
+
+        $response = $this->view('kelas/show', [
+            'kelas' => $kelas,
+            'students' => $students,
+        ], 'Detail Kelas');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Data Kelas' => route('kelas'),
+            'Detail Kelas'
+        ];
+        $response['breadcrumb_actions'] = [
+            [
+                'href' => route('kelas', ['action' => 'edit', 'id' => $id]),
+                'label' => 'Edit Kelas',
+                'icon' => 'fas fa-edit',
+                'variant' => 'info',
             ],
         ];
 

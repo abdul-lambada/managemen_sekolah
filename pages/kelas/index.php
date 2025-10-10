@@ -9,8 +9,11 @@
     <?php endif; ?>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Daftar Kelas</h6>
+            <a href="<?= route('kelas', ['action' => 'create']) ?>" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Tambah Kelas
+            </a>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -29,7 +32,8 @@
                                 <td><?= $index + 1 ?></td>
                                 <td><?= sanitize($kelas['nama_kelas']) ?></td>
                                 <td><?= sanitize($kelas['nama_jurusan']) ?></td>
-                                <td>
+                                <td class="text-nowrap">
+                                    <a href="<?= route('kelas', ['action' => 'show', 'id' => $kelas['id_kelas']]) ?>" class="btn btn-sm btn-secondary">Detail</a>
                                     <a href="<?= route('kelas', ['action' => 'edit', 'id' => $kelas['id_kelas']]) ?>" class="btn btn-sm btn-info">Edit</a>
                                     <form action="<?= route('kelas', ['action' => 'delete']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus data kelas ini?');">
                                         <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">

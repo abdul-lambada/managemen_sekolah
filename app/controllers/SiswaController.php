@@ -14,6 +14,7 @@ class SiswaController extends Controller
             'edit' => $this->edit(),
             'update' => $this->update(),
             'delete' => $this->delete(),
+            'show' => $this->show(),
             default => $this->listing(),
         };
     }
@@ -42,6 +43,44 @@ class SiswaController extends Controller
                 'label' => 'Tambah Siswa',
                 'icon' => 'fas fa-plus',
                 'variant' => 'primary',
+            ],
+        ];
+
+        return $response;
+    }
+
+    private function show(): array
+    {
+        $this->requireRole('admin');
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            flash('siswa_alert', 'Data siswa tidak ditemukan.', 'danger');
+            redirect(route('siswa'));
+        }
+
+        $model = new Siswa();
+        $student = $model->findWithRelations($id);
+
+        if (!$student) {
+            flash('siswa_alert', 'Data siswa tidak ditemukan.', 'danger');
+            redirect(route('siswa'));
+        }
+
+        $response = $this->view('siswa/show', [
+            'student' => $student,
+        ], 'Detail Siswa');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Data Siswa' => route('siswa'),
+            'Detail Siswa'
+        ];
+        $response['breadcrumb_actions'] = [
+            [
+                'href' => route('siswa', ['action' => 'edit', 'id' => $id]),
+                'label' => 'Edit Siswa',
+                'icon' => 'fas fa-edit',
+                'variant' => 'info',
             ],
         ];
 
