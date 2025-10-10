@@ -101,7 +101,7 @@ class SiswaController extends Controller
             'errors' => $errors,
             'csrfToken' => ensure_csrf_token(),
             'kelasOptions' => $this->kelasOptions(),
-            'userOptions' => $this->userOptions(),
+            'userOptions' => $this->userOptions(null),
         ], 'Tambah Siswa');
 
         $response['breadcrumbs'] = [
@@ -138,7 +138,7 @@ class SiswaController extends Controller
             'errors' => $errors,
             'csrfToken' => ensure_csrf_token(),
             'kelasOptions' => $this->kelasOptions(),
-            'userOptions' => $this->userOptions(),
+            'userOptions' => $this->userOptions(isset($student['user_id']) ? (int) $student['user_id'] : null),
         ], 'Edit Siswa');
 
         $response['breadcrumbs'] = [
@@ -259,7 +259,7 @@ class SiswaController extends Controller
             'alamat' => trim($input['alamat'] ?? ''),
             'id_kelas' => (int) ($input['id_kelas'] ?? 0),
             'phone' => trim($input['phone'] ?? ''),
-            'user_id' => $input['user_id'] ?? null,
+            'user_id' => isset($input['user_id']) && $input['user_id'] !== '' ? (int) $input['user_id'] : null,
         ];
     }
 
@@ -302,10 +302,6 @@ class SiswaController extends Controller
             }
         }
 
-        if ($data['user_id'] === '' || $data['user_id'] === null) {
-            $data['user_id'] = null;
-        }
-
         return $errors;
     }
 
@@ -320,7 +316,7 @@ class SiswaController extends Controller
             'alamat' => $data['alamat'],
             'id_kelas' => $data['id_kelas'],
             'phone' => $data['phone'] ?: null,
-            'user_id' => $data['user_id'] ?: null,
+            'user_id' => $data['user_id'] ?? null,
         ];
     }
 
@@ -330,10 +326,55 @@ class SiswaController extends Controller
         return $kelas->options();
     }
 
-    private function userOptions(): array
+    private function userOptions(?int $currentUserId = null): array
     {
-        $stmt = db()->query("SELECT id, name, role FROM users ORDER BY name");
-        return $stmt->fetchAll();
+        $pdo = db();
+
+        $usedStmt = $pdo->query(
+            "SELECT user_id FROM guru WHERE user_id IS NOT NULL
+             UNION
+             SELECT user_id FROM siswa WHERE user_id IS NOT NULL"
+        );
+        $usedIds = array_map('intval', $usedStmt->fetchAll(PDO::FETCH_COLUMN));
+        $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id > 0));
+
+        if ($currentUserId !== null && $currentUserId > 0) {
+            $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id !== $currentUserId));
+        }
+
+        $params = [];
+        $sql = "SELECT id, name, role FROM users";
+        if (!empty($usedIds)) {
+            $placeholders = implode(',', array_fill(0, count($usedIds), '?'));
+            $sql .= " WHERE id NOT IN ($placeholders)";
+            $params = array_map('intval', $usedIds);
+        }
+        $sql .= " ORDER BY name";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $options = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($currentUserId !== null && $currentUserId > 0) {
+            $hasCurrent = false;
+            foreach ($options as $option) {
+                if ((int) $option['id'] === $currentUserId) {
+                    $hasCurrent = true;
+                    break;
+                }
+            }
+
+            if (!$hasCurrent) {
+                $stmt = $pdo->prepare("SELECT id, name, role FROM users WHERE id = ? LIMIT 1");
+                $stmt->execute([$currentUserId]);
+                $current = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($current) {
+                    array_unshift($options, $current);
+                }
+            }
+        }
+
+        return $options;
     }
 
     private function assertPost(): void
