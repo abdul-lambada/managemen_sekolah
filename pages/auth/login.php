@@ -1,3 +1,10 @@
+<?php
+$appSettings = app_settings();
+$appName = $appSettings['app_name'] ?: APP_NAME;
+$appTagline = $appSettings['app_tagline'] ?: $appName;
+$faviconUrl = !empty($appSettings['favicon']) ? uploads_url($appSettings['favicon']) : asset('img/undraw_profile.svg');
+$pageTitle = $title ?? 'Masuk';
+?>
 <!DOCTYPE html>
 <html lang="id">
 
@@ -5,14 +12,16 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="<?= APP_NAME ?>">
-    <meta name="author" content="<?= APP_NAME ?>">
+    <meta name="description" content="<?= sanitize($appTagline) ?>">
+    <meta name="author" content="<?= sanitize($appName) ?>">
 
-    <title><?= sanitize($title ?? 'Masuk') ?> | <?= APP_NAME ?></title>
+    <title><?= sanitize($pageTitle) ?> | <?= sanitize($appName) ?></title>
+    <link rel="icon" href="<?= sanitize($faviconUrl) ?>">
 
     <link href="<?= asset('vendor/fontawesome-free/css/all.min.css') ?>" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link href="<?= asset('css/sb-admin-2.min.css') ?>" rel="stylesheet">
+    <link href="<?= asset('css/custom-overrides.css') ?>" rel="stylesheet">
 </head>
 
 <body class="bg-gradient-primary">
@@ -24,7 +33,9 @@
                     <div class="card-body p-0">
                         <div class="p-5">
                             <div class="text-center">
-                                <h1 class="h4 text-gray-900 mb-4">Masuk ke <?= APP_NAME ?></h1>
+                                <h1 class="h4 text-gray-900 mb-4"><?= $appSettings['app_name'] ?: APP_NAME ?></h1>
+                                <title><?= $pageTitle ?? ($appSettings['app_name'] ?: APP_NAME) ?> | <?= ($appSettings['app_name'] ?: APP_NAME) ?></title>
+                                <link rel="icon" href="<?= !empty($appSettings['favicon']) ? uploads_url($appSettings['favicon']) : asset('img/undraw_profile.svg') ?>">
                             </div>
                             <?php if (!empty($flash)): ?>
                                 <div class="alert alert-<?= sanitize($flash['type']) ?>">

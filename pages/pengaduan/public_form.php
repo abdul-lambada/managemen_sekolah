@@ -1,13 +1,23 @@
+<?php
+$appSettings = app_settings();
+$appName = $appSettings['app_name'] ?: APP_NAME;
+$appTagline = $appSettings['app_tagline'] ?: $appName;
+$faviconUrl = !empty($appSettings['favicon']) ? uploads_url($appSettings['favicon']) : asset('img/undraw_profile.svg');
+?>
 <!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Form Pengaduan | <?= APP_NAME ?></title>
+    <meta name="description" content="<?= sanitize($appTagline) ?>">
+    <meta name="author" content="<?= sanitize($appName) ?>">
+    <title><?= sanitize($title ?? 'Form Pengaduan') ?> | <?= sanitize($appName) ?></title>
+    <link rel="icon" href="<?= sanitize($faviconUrl) ?>">
     <link href="<?= asset('vendor/fontawesome-free/css/all.min.css') ?>" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link href="<?= asset('css/sb-admin-2.min.css') ?>" rel="stylesheet">
+    <link href="<?= asset('css/custom-overrides.css') ?>" rel="stylesheet">
     <style>
         body {
             background: linear-gradient(135deg, #4e73df, #1cc88a);

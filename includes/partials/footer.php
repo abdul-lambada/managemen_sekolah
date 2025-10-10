@@ -4,7 +4,7 @@ $appName = $appSettings['app_name'] ?: APP_NAME;
 ?>
 <footer class="sticky-footer bg-white">
     <div class="container my-auto">
-        <div class="copyright text-center my-auto">
+        <div class="copyright text-center text-white my-auto">
             <span>&copy; <?= date('Y') ?> <?= sanitize($appName) ?>. All rights reserved.</span>
         </div>
     </div>

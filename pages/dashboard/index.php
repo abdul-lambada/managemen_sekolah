@@ -1,9 +1,22 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-download fa-sm text-white-50"></i> Export Data
-        </a>
+        <h1 class="h3 mb-0 text-white">Dashboard</h1>
+        <div class="d-none d-sm-inline-block">
+            <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="Current Time">
+                <span class="d-flex align-items-center justify-content-center">
+                    <i class="fas fa-clock fa-sm text-white-50 me-2"></i>
+                    <span class="ms-1" id="current-time"></span>
+                </span>
+            </button>
+            <script>
+                function updateTime() {
+                    const date = new Date();
+                    const time = date.toLocaleTimeString('id-ID', { hourCycle: 'h23' });
+                    document.getElementById('current-time').innerHTML = time;
+                }
+                setInterval(function(){updateTime()}, 1000);
+            </script>
+        </div>
     </div>
 
     <div class="row">
