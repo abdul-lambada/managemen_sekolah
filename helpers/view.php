@@ -19,6 +19,10 @@ function render_view(string $view, array $data = [], array $options = []): void
     $breadcrumbs = $options['breadcrumbs'] ?? [];
     $breadcrumbActions = $options['breadcrumb_actions'] ?? [];
 
+    if (!empty($data)) {
+        extract($data, EXTR_SKIP);
+    }
+
     if ($layout === 'auth') {
         $title = $options['title'] ?? APP_NAME;
         include $viewPath;

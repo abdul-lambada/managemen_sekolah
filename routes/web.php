@@ -20,4 +20,10 @@ return [
     'whatsapp_logs' => [WhatsAppController::class, 'logs'],
     'automation' => [AutomationController::class, 'index'],
     'automation_trigger' => [AutomationController::class, 'trigger'],
+    'profile' => [ProfileController::class, 'index'],
+    'profile_edit' => [ProfileController::class, 'edit'],
+    'profile_update' => [ProfileController::class, 'update'],
+    'settings' => [SettingsController::class, 'index'],
+    'system_stats' => [SystemStatsController::class, 'index'],
+    'pengaduan' => [PengaduanController::class, 'index'],
 ];

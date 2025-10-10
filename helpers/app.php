@@ -10,6 +10,9 @@ function asset(string $path): string
 function uploads_url(string $path = ''): string
 {
     $relative = ltrim($path, '/');
+    if (strpos($relative, 'uploads/') === 0) {
+        $relative = substr($relative, strlen('uploads/'));
+    }
     $fullPath = BASE_PATH . '/public/uploads/' . $relative;
 
     if ($relative === '' || !file_exists($fullPath)) {
@@ -22,7 +25,7 @@ function uploads_url(string $path = ''): string
 function route(string $page, array $params = []): string
 {
     $query = array_merge(['page' => $page], $params);
-    return APP_URL . '/index.php?' . http_build_query($query);
+    return APP_URL . '/public/index.php?' . http_build_query($query);
 }
 
 function redirect(string $url): void

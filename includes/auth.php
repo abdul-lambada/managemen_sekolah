@@ -11,5 +11,9 @@ if (!in_array($page, $publicRoutes, true) && empty($_SESSION['user'])) {
     redirect(route('login'));
 }
 
+if (in_array($page, $publicRoutes, true) && !empty($_SESSION['user']) && $page === 'login') {
+    redirect(route('dashboard'));
+}
+
 $user = current_user();
 $menu = filter_menu_by_role($menu, $user['role'] ?? null);

@@ -79,7 +79,7 @@ class WhatsAppController extends Controller
         redirect(route('whatsapp_config'));
     }
 
-    private function logs(): array
+    public function logs(): array
     {
         $this->requireRole('admin');
         $limit = isset($_GET['limit']) ? max(10, (int) $_GET['limit']) : 100;
@@ -100,7 +100,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    private function templates(): array
+    public function templates(): array
     {
         $this->requireRole('admin');
 
@@ -131,7 +131,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    private function editTemplate(): array
+    public function editTemplate(): array
     {
         $this->requireRole('admin');
 
@@ -158,7 +158,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    private function saveTemplate(): string
+    public function saveTemplate(): string
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -198,12 +198,12 @@ class WhatsAppController extends Controller
         redirect(route('whatsapp_config', ['action' => 'templates']));
     }
 
-    private function updateTemplate(): string
+    public function updateTemplate(): string
     {
         return $this->saveTemplate();
     }
 
-    private function deleteTemplate(): string
+    public function deleteTemplate(): string
     {
         $this->requireRole('admin');
         $this->assertPost();

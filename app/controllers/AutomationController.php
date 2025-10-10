@@ -33,7 +33,8 @@ class AutomationController extends Controller
         $action = $_POST['action'] ?? '';
         $cmd = null;
 
-        $phpBinary = escapeshellarg(PHP_BINARY);
+        $phpBinaryPath = $this->resolvePhpBinary();
+        $phpBinary = escapeshellarg($phpBinaryPath);
 
         if ($action === 'whatsapp') {
             $script = escapeshellarg(BASE_PATH . '/scripts/whatsapp_dispatch.php');
@@ -112,7 +113,12 @@ class AutomationController extends Controller
             2 => ['pipe', 'w'],
         ];
 
-        $process = proc_open($command, $descriptorSpec, $pipes, BASE_PATH);
+        $options = [];
+        if (PHP_OS_FAMILY === 'Windows') {
+            $options['bypass_shell'] = true;
+        }
+
+        $process = proc_open($command, $descriptorSpec, $pipes, BASE_PATH, null, $options);
 
         if (!is_resource($process)) {
             throw new RuntimeException('Tidak dapat membuat proses.');
@@ -130,6 +136,18 @@ class AutomationController extends Controller
         }
 
         return trim($output);
+    }
+
+    private function resolvePhpBinary(): string
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $candidate = rtrim(PHP_BINDIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php.exe';
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return PHP_BINARY;
     }
 
     private function assertPost(): void

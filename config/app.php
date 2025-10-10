@@ -5,7 +5,7 @@ declare(strict_types=1);
 $basePath = dirname(__DIR__);
 define('BASE_PATH', $basePath);
 
-default_timezone_set('Asia/Jakarta');
+date_default_timezone_set('Asia/Jakarta');
 
 $config = [
     'APP_NAME' => 'Manajemen Sekolah',
