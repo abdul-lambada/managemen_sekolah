@@ -6,7 +6,18 @@ final class SettingsController extends Controller
 {
     public function index(): array
     {
-        $this->requireRole('admin');
+        if (!has_role('admin')) {
+            http_response_code(403);
+
+            return [
+                'view' => 'errors/forbidden',
+                'data' => [
+                    'message' => 'Anda tidak memiliki izin untuk mengakses halaman pengaturan.',
+                    'backUrl' => route('dashboard'),
+                ],
+                'title' => 'Akses Ditolak',
+            ];
+        }
 
         $response = $this->view('settings/index', [
             'sections' => $this->settingsSections(),
