@@ -1,0 +1,70 @@
+<div class="container-fluid">
+    <?php if (!empty($alert)): ?>
+        <div class="alert alert-<?= sanitize($alert['type']) ?> alert-dismissible fade show" role="alert">
+            <?= sanitize($alert['message']) ?>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    <?php endif; ?>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Daftar Guru</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataGuru" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nama</th>
+                            <th>NIP</th>
+                            <th>Jenis Kelamin</th>
+                            <th>Tanggal Lahir</th>
+                            <th>No. Telepon</th>
+                            <th>User</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($guruList as $index => $guru): ?>
+                            <tr>
+                                <td><?= $index + 1 ?></td>
+                                <td><?= sanitize($guru['nama_guru']) ?></td>
+                                <td><?= sanitize($guru['nip']) ?></td>
+                                <td><?= sanitize($guru['jenis_kelamin']) ?></td>
+                                <td><?= $guru['tanggal_lahir'] ? indo_date($guru['tanggal_lahir']) : '-' ?></td>
+                                <td><?= sanitize($guru['phone'] ?? '-') ?></td>
+                                <td><?= sanitize($guru['user_name'] ?? '-') ?></td>
+                                <td>
+                                    <a href="<?= route('guru', ['action' => 'edit', 'id' => $guru['id_guru']]) ?>" class="btn btn-sm btn-info">Edit</a>
+                                    <form action="<?= route('guru', ['action' => 'delete']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Hapus data guru ini?');">
+                                        <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
+                                        <input type="hidden" name="id" value="<?= (int) $guru['id_guru'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger">Hapus</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($guruList)): ?>
+                            <tr>
+                                <td colspan="8" class="text-center">Belum ada data guru.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        $('#dataGuru').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/id.json'
+            }
+        });
+    });
+</script>
