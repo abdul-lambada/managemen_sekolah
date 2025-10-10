@@ -12,4 +12,9 @@ final class Pengaduan extends Model
         $stmt = $this->db->query("SELECT * FROM {$this->table} ORDER BY tanggal_pengaduan DESC");
         return $stmt->fetchAll();
     }
+
+    public function createPengaduan(array $data): int
+    {
+        return $this->create($data);
+    }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/init.php';
 
-$publicRoutes = ['login', 'do_login'];
+$publicRoutes = ['login', 'do_login', 'pengaduan_form', 'pengaduan_submit'];
 $page = $_GET['page'] ?? 'dashboard';
 
 if (!in_array($page, $publicRoutes, true) && empty($_SESSION['user'])) {

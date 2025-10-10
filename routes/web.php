@@ -26,4 +26,6 @@ return [
     'settings' => [SettingsController::class, 'index'],
     'system_stats' => [SystemStatsController::class, 'index'],
     'pengaduan' => [PengaduanController::class, 'index'],
+    'pengaduan_form' => [PublicPengaduanController::class, 'form'],
+    'pengaduan_submit' => [PublicPengaduanController::class, 'submit'],
 ];
