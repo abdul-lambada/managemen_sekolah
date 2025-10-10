@@ -67,3 +67,58 @@ function verify_csrf_token(?string $token): bool
 {
     return $token !== null && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+function ensure_settings_table(): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $sql = "CREATE TABLE IF NOT EXISTS settings (
+        option_key VARCHAR(100) NOT NULL PRIMARY KEY,
+        option_value TEXT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+    db()->exec($sql);
+    $ensured = true;
+}
+
+function app_settings(bool $refresh = false): array
+{
+    static $cache = null;
+
+    if ($cache !== null && !$refresh) {
+        return $cache;
+    }
+
+    $defaults = [
+        'app_name' => APP_NAME,
+        'app_tagline' => '',
+        'favicon' => null,
+    ];
+
+    try {
+        ensure_settings_table();
+
+        $stmt = db()->prepare("SELECT option_key, option_value FROM settings WHERE option_key IN ('app_name', 'app_tagline', 'favicon')");
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        $values = $defaults;
+        foreach ($rows as $row) {
+            $key = $row['option_key'];
+            if (array_key_exists($key, $values)) {
+                $values[$key] = $row['option_value'];
+            }
+        }
+
+        $cache = $values;
+    } catch (Throwable $e) {
+        $cache = $defaults;
+    }
+
+    return $cache;
+}

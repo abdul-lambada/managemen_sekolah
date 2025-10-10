@@ -1,6 +1,8 @@
 <?php
 $menu = $menu ?? [];
 $currentPage = $_GET['page'] ?? 'dashboard';
+$appSettings = app_settings();
+$appName = $appSettings['app_name'] ?: APP_NAME;
 ?>
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
@@ -8,7 +10,7 @@ $currentPage = $_GET['page'] ?? 'dashboard';
         <div class="sidebar-brand-icon rotate-n-15">
             <i class="fas fa-school"></i>
         </div>
-        <div class="sidebar-brand-text mx-3"><?= APP_NAME ?></div>
+        <div class="sidebar-brand-text mx-3"><?= sanitize($appName) ?></div>
     </a>
 
     <hr class="sidebar-divider my-0">

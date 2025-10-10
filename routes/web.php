@@ -24,6 +24,7 @@ return [
     'profile_edit' => [ProfileController::class, 'edit'],
     'profile_update' => [ProfileController::class, 'update'],
     'settings' => [SettingsController::class, 'index'],
+    'settings_update' => [SettingsController::class, 'update'],
     'system_stats' => [SystemStatsController::class, 'index'],
     'pengaduan' => [PengaduanController::class, 'index'],
     'pengaduan_form' => [PublicPengaduanController::class, 'form'],

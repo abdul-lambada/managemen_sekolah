@@ -1,5 +1,10 @@
 <?php
-$pageTitle = $title ?? APP_NAME;
+$appSettings = app_settings();
+$appName = $appSettings['app_name'] ?: APP_NAME;
+$appTagline = $appSettings['app_tagline'] ?: '';
+$pageTitle = $title ?? $appName;
+$metaDescription = $appTagline !== '' ? $appTagline : $appName;
+$faviconUrl = !empty($appSettings['favicon']) ? uploads_url($appSettings['favicon']) : asset('img/undraw_profile.svg');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -8,10 +13,11 @@ $pageTitle = $title ?? APP_NAME;
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<meta name="description" content="<?= APP_NAME ?>">
-	<meta name="author" content="<?= APP_NAME ?>">
+	<meta name="description" content="<?= sanitize($metaDescription) ?>">
+	<meta name="author" content="<?= sanitize($appName) ?>">
 
-	<title><?= sanitize($pageTitle) ?> | <?= APP_NAME ?></title>
+	<title><?= sanitize($pageTitle) ?> | <?= sanitize($appName) ?></title>
+	<link rel="icon" href="<?= sanitize($faviconUrl) ?>">
 
 	<link href="<?= asset('vendor/fontawesome-free/css/all.min.css') ?>" rel="stylesheet" type="text/css">
 	<link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
