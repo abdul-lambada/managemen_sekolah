@@ -62,6 +62,8 @@ Akun contoh tersedia di tabel `users`. Misal:
 - **Fingerprint**: kelola perangkat & lihat log.
 - **WhatsApp**: konfigurasi API, log pesan, kelola template.
 - **Keamanan**: CSRF token, sanitasi output dengan helper `sanitize()`.
+- **Tampilan Gradien Modern**: latar `body` dan elemen `.bg-gradient-primary` menggunakan gradien ungu–cyan–lime adaptif (`public/assets/css/custom-overrides.css`).
+- **Branding Dinamis**: judul halaman, meta description, dan favicon mengikuti pengaturan aplikasi (`app_settings`) baik untuk layout utama maupun halaman publik (`pages/auth/login.php`, `pages/pengaduan/public_form.php`).
 
 ## Integrasi WhatsApp (Fonnte)
 

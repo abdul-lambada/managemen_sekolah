@@ -4,7 +4,7 @@
     "require": {
         "dompdf/dompdf": "^2.0",
         "phpoffice/phpspreadsheet": "^1.29",
-        "totemo/zklib": "^1.0"
+        "aditia-dev/zklib": "dev-main"
     },
     "autoload": {
         "psr-4": {
