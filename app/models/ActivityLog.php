@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use PDO;
-
 final class ActivityLog extends Model
 {
     protected string $table = 'activity_logs';
@@ -21,10 +19,13 @@ final class ActivityLog extends Model
         ]);
     }
 
-    public function latest(int $limit = 20): array
+    public function latest(string $orderBy = 'created_at', int $limit = 20): array
     {
-        $stmt = $this->db->prepare('SELECT al.*, u.name AS user_name FROM activity_logs al LEFT JOIN users u ON al.user_id = u.id ORDER BY al.created_at DESC LIMIT :lim');
-        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $orderBy = in_array($orderBy, ['created_at', 'id'], true) ? $orderBy : 'created_at';
+
+        $sql = sprintf('SELECT al.*, u.name AS user_name FROM activity_logs al LEFT JOIN users u ON al.user_id = u.id ORDER BY al.%s DESC LIMIT :lim', $orderBy);
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':lim', $limit, \PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll();
@@ -56,7 +57,7 @@ final class ActivityLog extends Model
         foreach ($params as $key => $value) {
             $stmt->bindValue(':' . $key, $value);
         }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll();

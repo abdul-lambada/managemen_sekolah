@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use DateTimeImmutable;
-
 class AuthController extends Controller
 {
     public function showLogin(): array
@@ -40,13 +38,22 @@ class AuthController extends Controller
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if ($username === '' || $password === '') {
-            flash('auth_error', 'Nama pengguna dan kata sandi wajib diisi.', 'danger');
+        $errors = [];
+        if ($username === '') {
+            $errors[] = 'Username wajib diisi.';
+        }
+
+        if ($password === '') {
+            $errors[] = 'Kata sandi wajib diisi.';
+        }
+
+        if ($errors) {
+            flash('auth_error', implode(' ', $errors), 'danger');
             redirect(route('login'));
         }
 
         $userModel = new User();
-        $user = $userModel->findByName($username);
+        $user = $userModel->findByUsername($username);
 
         if (!$user || !password_verify($password, $user['password'])) {
             activity_log('auth.login_failed', 'Login gagal untuk username ' . $username);
