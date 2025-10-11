@@ -7,6 +7,18 @@ function asset(string $path): string
     return APP_URL . '/public/assets/' . ltrim($path, '/');
 }
 
+function activity_log(string $action, ?string $description = null): void
+{
+    try {
+        $user = current_user();
+        $userId = $user['id'] ?? null;
+        $model = new ActivityLog();
+        $model->record($userId, $action, $description);
+    } catch (Throwable $e) {
+        error_log('[activity_log] ' . $e->getMessage());
+    }
+}
+
 function uploads_url(string $path = ''): string
 {
     $relative = ltrim($path, '/');
@@ -65,7 +77,14 @@ function ensure_csrf_token(): string
 
 function verify_csrf_token(?string $token): bool
 {
-    return $token !== null && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+    $valid = $token !== null && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+
+    if ($valid) {
+        unset($_SESSION['csrf_token']);
+        ensure_csrf_token();
+    }
+
+    return $valid;
 }
 
 function ensure_settings_table(): void

@@ -54,6 +54,7 @@ function attendance_badge(?string $status): string
     $map = [
         'Hadir' => 'success',
         'Telat' => 'warning',
+        'Terlambat' => 'warning',
         'Izin' => 'info',
         'Sakit' => 'primary',
         'Alfa' => 'danger',

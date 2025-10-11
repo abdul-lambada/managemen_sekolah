@@ -37,6 +37,11 @@ $pageTitle = $title ?? 'Masuk';
                                 <title><?= $pageTitle ?? ($appSettings['app_name'] ?: APP_NAME) ?> | <?= ($appSettings['app_name'] ?: APP_NAME) ?></title>
                                 <link rel="icon" href="<?= !empty($appSettings['favicon']) ? uploads_url($appSettings['favicon']) : asset('img/undraw_profile.svg') ?>">
                             </div>
+                            <?php if (!empty($flashSuccess)): ?>
+                                <div class="alert alert-<?= sanitize($flashSuccess['type']) ?>">
+                                    <?= sanitize($flashSuccess['message']) ?>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($flash)): ?>
                                 <div class="alert alert-<?= sanitize($flash['type']) ?>">
                                     <?= sanitize($flash['message']) ?>

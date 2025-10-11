@@ -17,11 +17,7 @@ class LaporanAbsensiController extends Controller
 
         $export = $_GET['export'] ?? null;
 
-        if ($export === 'csv') {
-            $this->exportCsv($reports, $periode, $start, $end);
-        }
-
-        if ($export === 'pdf') {
+        if (in_array($export, ['csv', 'pdf', 'excel'], true)) {
             $headers = ['Periode', 'Tanggal Mulai', 'Tanggal Akhir', 'Jumlah Hadir', 'Jumlah Tidak Hadir'];
             $rows = array_map(static function (array $report): array {
                 return [
@@ -33,28 +29,7 @@ class LaporanAbsensiController extends Controller
                 ];
             }, $reports);
 
-            export_array_to_pdf(
-                'laporan_absensi',
-                'Laporan Absensi',
-                $headers,
-                $rows,
-                'landscape'
-            );
-        }
-
-        if ($export === 'excel') {
-            $headers = ['Periode', 'Tanggal Mulai', 'Tanggal Akhir', 'Jumlah Hadir', 'Jumlah Tidak Hadir'];
-            $rows = array_map(static function (array $report): array {
-                return [
-                    $report['periode'],
-                    $report['tanggal_mulai'],
-                    $report['tanggal_akhir'],
-                    $report['jumlah_hadir'],
-                    $report['jumlah_tidak_hadir'],
-                ];
-            }, $reports);
-
-            export_array_to_excel('laporan_absensi', $headers, $rows);
+            $this->exportGeneric($export, 'laporan_absensi', 'Laporan Absensi', $headers, $rows);
         }
 
         $totalHadir = array_sum(array_column($reports, 'jumlah_hadir'));
@@ -79,29 +54,29 @@ class LaporanAbsensiController extends Controller
         return $response;
     }
 
-    private function exportCsv(array $reports, string $periode, ?string $start, ?string $end): void
+    private function exportGeneric(string $export, string $filename, string $title, array $headers, array $rows): void
     {
-        $filename = 'laporan_absensi_' . strtolower($periode) . '_' . ($start ?: 'all') . '_' . ($end ?: date('Ymd')) . '_' . date('His') . '.csv';
-
-        header('Content-Type: text/csv; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-
-        $output = fopen('php://output', 'w');
-        fputcsv($output, ['Periode', 'Tanggal Mulai', 'Tanggal Akhir', 'Jumlah Hadir', 'Jumlah Tidak Hadir']);
-
-        foreach ($reports as $report) {
-            fputcsv($output, [
-                $report['periode'],
-                $report['tanggal_mulai'],
-                $report['tanggal_akhir'],
-                $report['jumlah_hadir'],
-                $report['jumlah_tidak_hadir'],
-            ]);
+        if ($export === 'pdf') {
+            export_array_to_pdf($filename, $title, $headers, $rows, 'landscape');
         }
 
-        fclose($output);
-        exit;
+        if ($export === 'excel') {
+            export_array_to_excel($filename, $headers, $rows);
+        }
+
+        if ($export === 'csv') {
+            header('Content-Type: text/csv; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '_' . date('Ymd_His') . '.csv"');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            $output = fopen('php://output', 'w');
+            fputcsv($output, $headers);
+            foreach ($rows as $row) {
+                fputcsv($output, $row);
+            }
+            fclose($output);
+            exit;
+        }
     }
 }

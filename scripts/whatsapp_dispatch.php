@@ -8,7 +8,7 @@ require_once $basePath . '/config/database.php';
 require_once $basePath . '/autoload.php';
 require_once $basePath . '/helpers/app.php';
 
-default_timezone_set('Asia/Jakarta');
+date_default_timezone_set('Asia/Jakarta');
 
 $options = getopt('', ['limit::']);
 $batchLimit = isset($options['limit']) ? max(1, (int) $options['limit']) : 20;
@@ -29,14 +29,23 @@ $pendingStmt->bindValue(':limit', $batchLimit, PDO::PARAM_INT);
 $pendingStmt->execute();
 $jobs = $pendingStmt->fetchAll();
 
-if (!$jobs) {
-    fwrite(STDOUT, "Tidak ada pesan pending.\n");
-    exit(0);
-}
-
 $successCount = 0;
 $failureCount = 0;
 $processedCount = count($jobs);
+
+if (!$jobs) {
+    updateSystemStat($pdo, 'whatsapp_dispatch_last_run', json_encode([
+        'timestamp' => date('Y-m-d H:i:s'),
+        'processed' => 0,
+        'success' => 0,
+        'failure' => 0,
+        'status' => 'idle',
+        'message' => 'Tidak ada pesan pending.'
+    ], JSON_UNESCAPED_UNICODE));
+
+    fwrite(STDOUT, "Tidak ada pesan pending.\n");
+    exit(0);
+}
 
 foreach ($jobs as $job) {
     $payload = buildPayload($job, $config);
@@ -73,6 +82,7 @@ updateSystemStat($pdo, 'whatsapp_dispatch_last_run', json_encode([
     'success' => $successCount,
     'failure' => $failureCount,
     'status' => $failureCount > 0 ? 'warning' : 'success',
+    'message' => $failureCount > 0 ? 'Beberapa pesan gagal dikirim.' : 'Seluruh pesan berhasil dikirim.'
 ], JSON_UNESCAPED_UNICODE));
 
 fwrite(STDOUT, "Selesai. Berhasil: {$successCount}, Gagal: {$failureCount}.\n");

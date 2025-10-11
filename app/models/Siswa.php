@@ -45,4 +45,19 @@ class Siswa extends Model
         $stmt->execute(['id' => $kelasId]);
         return $stmt->fetchAll();
     }
+
+    public function findByUserId(int $userId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT s.*, k.nama_kelas, j.nama_jurusan
+             FROM siswa s
+             JOIN kelas k ON s.id_kelas = k.id_kelas
+             JOIN jurusan j ON k.id_jurusan = j.id_jurusan
+             WHERE s.user_id = :user LIMIT 1"
+        );
+        $stmt->execute(['user' => $userId]);
+        $row = $stmt->fetch();
+
+        return $row ?: null;
+    }
 }

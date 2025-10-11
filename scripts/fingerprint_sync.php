@@ -8,7 +8,7 @@ require_once $basePath . '/config/database.php';
 require_once $basePath . '/autoload.php';
 require_once $basePath . '/helpers/app.php';
 
-default_timezone_set('Asia/Jakarta');
+date_default_timezone_set('Asia/Jakarta');
 
 $pdo = db();
 
@@ -19,6 +19,193 @@ $devices = $deviceStmt->fetchAll();
 if (!$devices) {
     fwrite(STDOUT, "Tidak ada perangkat aktif.\n");
     exit(0);
+}
+
+function processScheduleAttendance(PDO $pdo, array $entries, array $device): array
+{
+    $processed = 0;
+
+    foreach ($entries as $entry) {
+        $fingerprintUid = $entry['user_id'] ?? null;
+        $timestamp = $entry['timestamp'] ?? null;
+        if (!$fingerprintUid || !$timestamp) {
+            continue;
+        }
+
+        $guruId = mapFingerprintToGuru($pdo, (string) $fingerprintUid);
+        if (!$guruId) {
+            continue;
+        }
+
+        $schedule = findJadwalForEntry($pdo, $guruId, $timestamp);
+        if (!$schedule) {
+            continue;
+        }
+
+        $date = substr($timestamp, 0, 10);
+        $time = substr($timestamp, 11, 8);
+        $status = $entry['status'] ?? 'Masuk';
+
+        $absensiId = upsertAbsensiMapel($pdo, $schedule, $date, $time, $status);
+        insertAbsensiMapelLog($pdo, $absensiId, (int) $schedule['id_jadwal'], (string) $fingerprintUid, $timestamp, $status, $entry);
+
+        $processed++;
+    }
+
+    return ['processed' => $processed];
+}
+
+function mapFingerprintToGuru(PDO $pdo, string $fingerprintUid): ?int
+{
+    $stmt = $pdo->prepare('SELECT id_guru FROM guru_fingerprint WHERE fingerprint_uid = :uid LIMIT 1');
+    $stmt->execute(['uid' => $fingerprintUid]);
+    $id = $stmt->fetchColumn();
+
+    if ($id === false) {
+        return null;
+    }
+
+    return (int) $id;
+}
+
+function findJadwalForEntry(PDO $pdo, int $guruId, string $timestamp): ?array
+{
+    $dateTime = new DateTime($timestamp);
+    $hari = indoDayName($dateTime);
+    $time = $dateTime->format('H:i:s');
+
+    $stmt = $pdo->prepare(
+        "SELECT j.* FROM jadwal_pelajaran j
+         WHERE j.id_guru = :guru AND j.hari = :hari"
+    );
+    $stmt->execute([
+        'guru' => $guruId,
+        'hari' => $hari,
+    ]);
+
+    $jadwals = $stmt->fetchAll();
+    if (!$jadwals) {
+        return null;
+    }
+
+    foreach ($jadwals as $jadwal) {
+        $start = DateTime::createFromFormat('H:i:s', $jadwal['jam_mulai']);
+        $end = DateTime::createFromFormat('H:i:s', $jadwal['jam_selesai']);
+        if (!$start || !$end) {
+            continue;
+        }
+
+        $marginMinutes = 30;
+        $startMargin = (clone $start)->modify(sprintf('-%d minutes', $marginMinutes));
+        $endMargin = (clone $end)->modify(sprintf('+%d minutes', $marginMinutes));
+
+        $timeObj = DateTime::createFromFormat('H:i:s', $time);
+        if ($timeObj >= $startMargin && $timeObj <= $endMargin) {
+            return $jadwal;
+        }
+    }
+
+    return null;
+}
+
+function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $time, string $status): int
+{
+    $stmt = $pdo->prepare('SELECT * FROM absensi_guru_mapel WHERE id_jadwal = :id AND tanggal = :tanggal LIMIT 1');
+    $stmt->execute([
+        'id' => $jadwal['id_jadwal'],
+        'tanggal' => $tanggal,
+    ]);
+    $existing = $stmt->fetch();
+
+    $jamMulai = $jadwal['jam_mulai'];
+    $lateThreshold = 10; // minutes
+    $statusKehadiran = 'Hadir';
+
+    $scheduledStart = DateTime::createFromFormat('H:i:s', $jamMulai);
+    $actualTime = DateTime::createFromFormat('H:i:s', $time);
+    if ($scheduledStart && $actualTime) {
+        $diff = $scheduledStart->diff($actualTime);
+        $minutes = (int) $diff->format('%r%i');
+        if ($minutes > $lateThreshold) {
+            $statusKehadiran = 'Terlambat';
+        }
+    }
+
+    if ($existing) {
+        $update = [
+            'status_kehadiran' => $status === 'Keluar' ? ($existing['status_kehadiran'] ?? 'Hadir') : $statusKehadiran,
+            'jam_masuk' => $existing['jam_masuk'],
+            'jam_keluar' => $existing['jam_keluar'],
+            'catatan' => $existing['catatan'],
+        ];
+
+        if ($status === 'Masuk') {
+            if (empty($existing['jam_masuk']) || $time < $existing['jam_masuk']) {
+                $update['jam_masuk'] = $time;
+            }
+        } elseif ($status === 'Keluar') {
+            if (empty($existing['jam_keluar']) || $time > $existing['jam_keluar']) {
+                $update['jam_keluar'] = $time;
+            }
+        }
+
+        $pdo->prepare(
+            'UPDATE absensi_guru_mapel SET status_kehadiran = :status, jam_masuk = :jam_masuk, jam_keluar = :jam_keluar, sumber = :sumber, updated_at = NOW() WHERE id_absensi_mapel = :id'
+        )->execute([
+            'status' => $update['status_kehadiran'],
+            'jam_masuk' => $update['jam_masuk'],
+            'jam_keluar' => $update['jam_keluar'],
+            'sumber' => 'fingerprint',
+            'id' => $existing['id_absensi_mapel'],
+        ]);
+
+        return (int) $existing['id_absensi_mapel'];
+    }
+
+    $pdo->prepare(
+        'INSERT INTO absensi_guru_mapel (id_jadwal, tanggal, status_kehadiran, jam_masuk, jam_keluar, sumber, catatan)
+         VALUES (:id_jadwal, :tanggal, :status, :jam_masuk, :jam_keluar, :sumber, :catatan)'
+    )->execute([
+        'id_jadwal' => $jadwal['id_jadwal'],
+        'tanggal' => $tanggal,
+        'status' => $status === 'Keluar' ? 'Hadir' : $statusKehadiran,
+        'jam_masuk' => $status === 'Masuk' ? $time : null,
+        'jam_keluar' => $status === 'Keluar' ? $time : null,
+        'sumber' => 'fingerprint',
+        'catatan' => null,
+    ]);
+
+    return (int) $pdo->lastInsertId();
+}
+
+function insertAbsensiMapelLog(PDO $pdo, int $absensiId, int $jadwalId, string $fingerprintUid, string $timestamp, string $status, array $entry): void
+{
+    $pdo->prepare(
+        'INSERT INTO absensi_guru_mapel_log (id_absensi_mapel, id_jadwal, fingerprint_user_id, timestamp, status, payload)
+         VALUES (:absensi, :jadwal, :uid, :timestamp, :status, :payload)'
+    )->execute([
+        'absensi' => $absensiId ?: null,
+        'jadwal' => $jadwalId,
+        'uid' => $fingerprintUid,
+        'timestamp' => $timestamp,
+        'status' => $status,
+        'payload' => json_encode($entry, JSON_UNESCAPED_UNICODE),
+    ]);
+}
+
+function indoDayName(DateTime $dateTime): string
+{
+    $names = [
+        'Monday' => 'Senin',
+        'Tuesday' => 'Selasa',
+        'Wednesday' => 'Rabu',
+        'Thursday' => 'Kamis',
+        'Friday' => 'Jumat',
+        'Saturday' => 'Sabtu',
+        'Sunday' => 'Minggu',
+    ];
+
+    return $names[$dateTime->format('l')] ?? 'Senin';
 }
 
 $summary = [
@@ -42,6 +229,7 @@ foreach ($devices as $device) {
                 'device' => $deviceInfo,
                 'status' => 'warning',
                 'inserted' => 0,
+                'schedule_processed' => 0,
                 'message' => 'Tidak ada data baru',
             ];
             $summary['total_warning']++;
@@ -49,11 +237,20 @@ foreach ($devices as $device) {
         }
 
         $inserted = persistAttendance($pdo, $entries, $device);
-        logFingerprint($pdo, 'sync', "Berhasil menyimpan {$inserted} entri", 'success', $deviceInfo);
+        $scheduleResult = processScheduleAttendance($pdo, $entries, $device);
+
+        logFingerprint(
+            $pdo,
+            'sync',
+            "Berhasil menyimpan {$inserted} entri, terproses jadwal {$scheduleResult['processed']} entri",
+            'success',
+            $deviceInfo
+        );
         $summary['devices'][] = [
             'device' => $deviceInfo,
             'status' => 'success',
             'inserted' => $inserted,
+            'schedule_processed' => $scheduleResult['processed'],
         ];
         $summary['total_success']++;
     } catch (Throwable $e) {
@@ -63,6 +260,7 @@ foreach ($devices as $device) {
             'device' => $deviceInfo,
             'status' => 'error',
             'inserted' => 0,
+            'schedule_processed' => 0,
             'message' => $e->getMessage(),
         ];
         $summary['total_failure']++;

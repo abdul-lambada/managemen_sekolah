@@ -22,4 +22,10 @@ class Guru extends Model
         $row = $stmt->fetch();
         return $row ?: null;
     }
+
+    public function options(): array
+    {
+        $sql = "SELECT id_guru, nama_guru FROM guru ORDER BY nama_guru";
+        return $this->db->query($sql)->fetchAll();
+    }
 }
