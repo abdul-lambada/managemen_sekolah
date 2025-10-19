@@ -345,6 +345,44 @@ CREATE TABLE `system_stats` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE `login_attempts` (
+  `id` bigint(20) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `attempted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `success` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `change_logs` (
+  `id` bigint(20) NOT NULL,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` bigint(20) NOT NULL,
+  `action` enum('create','update','delete') NOT NULL,
+  `changed_by` int(11) DEFAULT NULL,
+  `before_data` longtext DEFAULT NULL,
+  `after_data` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `login_attempts` (
+  `id` bigint(20) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `attempted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `success` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `change_logs` (
+  `id` bigint(20) NOT NULL,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` bigint(20) NOT NULL,
+  `action` enum('create','update','delete') NOT NULL,
+  `changed_by` int(11) DEFAULT NULL,
+  `before_data` longtext DEFAULT NULL,
+  `after_data` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Dumping data untuk tabel `system_stats`
 --

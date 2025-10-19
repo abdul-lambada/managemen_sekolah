@@ -64,15 +64,18 @@ foreach ($jobs as $job) {
 
         if ($status === 'success') {
             $successCount++;
+            markAutomationLog($pdo, (int) $job['id'], true, null);
             fwrite(STDOUT, "[OK] Pesan ke {$job['phone_number']} berhasil dikirim.\n");
         } else {
             $failureCount++;
+            markAutomationLog($pdo, (int) $job['id'], false, $detail);
             fwrite(STDOUT, "[FAIL] Pesan ke {$job['phone_number']} gagal: {$detail}\n");
         }
     } catch (Throwable $e) {
         $failureCount++;
         fwrite(STDERR, "[ERROR] Pengiriman ke {$job['phone_number']} gagal: {$e->getMessage()}\n");
         updateLog($pdo, (int) $job['id'], 'failed', null, $e->getMessage());
+        markAutomationLog($pdo, (int) $job['id'], false, $e->getMessage());
     }
 }
 
@@ -169,6 +172,19 @@ function updateLog(PDO $pdo, int $id, string $status, ?string $messageId, ?strin
         'message_id' => $messageId,
         'response' => $response,
         'id' => $id,
+    ]);
+}
+
+function markAutomationLog(PDO $pdo, int $logId, bool $success, ?string $error): void
+{
+    $stmt = $pdo->prepare(
+        'UPDATE whatsapp_automation_logs SET message_sent = :sent, error_message = :error, updated_at = NOW()
+         WHERE whatsapp_log_id = :log_id'
+    );
+    $stmt->execute([
+        'sent' => $success ? 1 : 0,
+        'error' => $error,
+        'log_id' => $logId,
     ]);
 }
 

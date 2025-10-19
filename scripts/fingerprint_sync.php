@@ -24,6 +24,7 @@ if (!$devices) {
 function processScheduleAttendance(PDO $pdo, array $entries, array $device): array
 {
     $processed = 0;
+    $lateNotifications = [];
 
     foreach ($entries as $entry) {
         $fingerprintUid = $entry['user_id'] ?? null;
@@ -46,13 +47,144 @@ function processScheduleAttendance(PDO $pdo, array $entries, array $device): arr
         $time = substr($timestamp, 11, 8);
         $status = $entry['status'] ?? 'Masuk';
 
-        $absensiId = upsertAbsensiMapel($pdo, $schedule, $date, $time, $status);
-        insertAbsensiMapelLog($pdo, $absensiId, (int) $schedule['id_jadwal'], (string) $fingerprintUid, $timestamp, $status, $entry);
+        $result = upsertAbsensiMapel($pdo, $schedule, $date, $time, $status);
+        insertAbsensiMapelLog($pdo, $result['id'], (int) $schedule['id_jadwal'], (string) $fingerprintUid, $timestamp, $status, $entry);
+
+        if ($result['should_notify_late'] && $result['minutes_late'] > 0) {
+            $lateNotifications[] = [
+                'guru_id' => $guruId,
+                'schedule' => $schedule,
+                'timestamp' => $timestamp,
+                'minutes_late' => $result['minutes_late'],
+            ];
+        }
 
         $processed++;
     }
 
-    return ['processed' => $processed];
+    return [
+        'processed' => $processed,
+        'late_notifications' => $lateNotifications,
+    ];
+}
+
+function queueLateNotification(PDO $pdo, array $data): void
+{
+    $attendanceDate = substr($data['timestamp'], 0, 10);
+
+    if (hasLateNotification($pdo, $data['guru_id'], $attendanceDate)) {
+        return;
+    }
+
+    $guru = fetchGuruContact($pdo, $data['guru_id']);
+    if (!$guru || empty($guru['phone'])) {
+        return;
+    }
+
+    $template = getWhatsAppTemplate($pdo, 'attendance_late');
+    if (!$template) {
+        return;
+    }
+
+    $timestamp = DateTime::createFromFormat('Y-m-d H:i:s', $data['timestamp']);
+    $formattedDate = $timestamp ? $timestamp->format('d-m-Y') : $attendanceDate;
+    $formattedTime = $timestamp ? $timestamp->format('H:i') : substr($data['timestamp'], 11, 5);
+
+    $message = renderTemplateBody($template['body'], [
+        'nama' => $guru['nama_guru'],
+        'tanggal' => $formattedDate,
+        'waktu' => $formattedTime,
+        'menit_terlambat' => (string) $data['minutes_late'],
+    ]);
+
+    $pdo->prepare(
+        'INSERT INTO whatsapp_logs (phone_number, message_type, template_name, message, status, created_at)
+         VALUES (:phone, :type, :template, :message, :status, NOW())'
+    )->execute([
+        'phone' => $guru['phone'],
+        'type' => 'text',
+        'template' => 'attendance_late',
+        'message' => $message,
+        'status' => 'pending',
+    ]);
+
+    $logId = (int) $pdo->lastInsertId();
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO whatsapp_automation_logs (user_id, user_type, attendance_status, notification_type, recipient_phone, recipient_type, template_used, message_sent, whatsapp_log_id, attendance_date, created_at)
+         VALUES (:user_id, :user_type, :attendance_status, :notification_type, :recipient_phone, :recipient_type, :template_used, 0, :log_id, :attendance_date, NOW())'
+    );
+    $stmt->execute([
+        'user_id' => $data['guru_id'],
+        'user_type' => 'guru',
+        'attendance_status' => 'Terlambat',
+        'notification_type' => 'late_notice',
+        'recipient_phone' => $guru['phone'],
+        'recipient_type' => 'user',
+        'template_used' => 'attendance_late',
+        'log_id' => $logId,
+        'attendance_date' => $attendanceDate,
+    ]);
+}
+
+function hasLateNotification(PDO $pdo, int $guruId, string $date): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT id FROM whatsapp_automation_logs WHERE user_type = :type AND user_id = :user AND notification_type = :notification AND attendance_date = :date LIMIT 1'
+    );
+    $stmt->execute([
+        'type' => 'guru',
+        'user' => $guruId,
+        'notification' => 'late_notice',
+        'date' => $date,
+    ]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+function fetchGuruContact(PDO $pdo, int $guruId): ?array
+{
+    $stmt = $pdo->prepare('SELECT nama_guru, phone FROM guru WHERE id_guru = :id LIMIT 1');
+    $stmt->execute(['id' => $guruId]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    $row['phone'] = trim((string) ($row['phone'] ?? ''));
+
+    return $row;
+}
+
+function getWhatsAppTemplate(PDO $pdo, string $name): ?array
+{
+    static $cache = [];
+
+    if (isset($cache[$name])) {
+        return $cache[$name];
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM whatsapp_message_templates WHERE name = :name AND is_active = 1 LIMIT 1');
+    $stmt->execute(['name' => $name]);
+    $template = $stmt->fetch();
+
+    if ($template) {
+        $cache[$name] = $template;
+    }
+
+    return $template ?: null;
+}
+
+function renderTemplateBody(string $body, array $variables): string
+{
+    $message = $body;
+
+    foreach ($variables as $key => $value) {
+        $message = str_replace('{{' . $key . '}}', (string) $value, $message);
+    }
+
+    return $message;
 }
 
 function mapFingerprintToGuru(PDO $pdo, string $fingerprintUid): ?int
@@ -108,7 +240,7 @@ function findJadwalForEntry(PDO $pdo, int $guruId, string $timestamp): ?array
     return null;
 }
 
-function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $time, string $status): int
+function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $time, string $status): array
 {
     $stmt = $pdo->prepare('SELECT * FROM absensi_guru_mapel WHERE id_jadwal = :id AND tanggal = :tanggal LIMIT 1');
     $stmt->execute([
@@ -120,6 +252,7 @@ function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $ti
     $jamMulai = $jadwal['jam_mulai'];
     $lateThreshold = 10; // minutes
     $statusKehadiran = 'Hadir';
+    $minutesLate = 0;
 
     $scheduledStart = DateTime::createFromFormat('H:i:s', $jamMulai);
     $actualTime = DateTime::createFromFormat('H:i:s', $time);
@@ -128,6 +261,7 @@ function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $ti
         $minutes = (int) $diff->format('%r%i');
         if ($minutes > $lateThreshold) {
             $statusKehadiran = 'Terlambat';
+            $minutesLate = $minutes;
         }
     }
 
@@ -159,7 +293,13 @@ function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $ti
             'id' => $existing['id_absensi_mapel'],
         ]);
 
-        return (int) $existing['id_absensi_mapel'];
+        $shouldNotify = $status === 'Masuk' && $update['status_kehadiran'] === 'Terlambat' && $minutesLate > 0;
+
+        return [
+            'id' => (int) $existing['id_absensi_mapel'],
+            'should_notify_late' => $shouldNotify,
+            'minutes_late' => $minutesLate,
+        ];
     }
 
     $pdo->prepare(
@@ -175,7 +315,15 @@ function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $ti
         'catatan' => null,
     ]);
 
-    return (int) $pdo->lastInsertId();
+    $newId = (int) $pdo->lastInsertId();
+
+    $shouldNotify = $status === 'Masuk' && $statusKehadiran === 'Terlambat' && $minutesLate > 0;
+
+    return [
+        'id' => $newId,
+        'should_notify_late' => $shouldNotify,
+        'minutes_late' => $minutesLate,
+    ];
 }
 
 function insertAbsensiMapelLog(PDO $pdo, int $absensiId, int $jadwalId, string $fingerprintUid, string $timestamp, string $status, array $entry): void
@@ -214,6 +362,7 @@ $summary = [
     'total_success' => 0,
     'total_failure' => 0,
     'total_warning' => 0,
+    'late_notifications' => 0,
 ];
 
 foreach ($devices as $device) {
@@ -239,6 +388,16 @@ foreach ($devices as $device) {
         $inserted = persistAttendance($pdo, $entries, $device);
         $scheduleResult = processScheduleAttendance($pdo, $entries, $device);
 
+        if (!empty($scheduleResult['late_notifications'])) {
+            foreach ($scheduleResult['late_notifications'] as $notification) {
+                queueLateNotification($pdo, $notification);
+            }
+            $lateCount = count($scheduleResult['late_notifications']);
+            $summary['late_notifications'] += $lateCount;
+        } else {
+            $lateCount = 0;
+        }
+
         logFingerprint(
             $pdo,
             'sync',
@@ -251,6 +410,7 @@ foreach ($devices as $device) {
             'status' => 'success',
             'inserted' => $inserted,
             'schedule_processed' => $scheduleResult['processed'],
+            'late_notices' => $lateCount,
         ];
         $summary['total_success']++;
     } catch (Throwable $e) {

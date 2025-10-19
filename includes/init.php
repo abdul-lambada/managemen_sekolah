@@ -82,6 +82,7 @@ $menu = [
         'items' => [
             ['label' => 'Pengaduan', 'page' => 'pengaduan', 'icon' => 'fas fa-headset', 'roles' => ['admin']],
             ['label' => 'System Stats', 'page' => 'system_stats', 'icon' => 'fas fa-tachometer-alt', 'roles' => ['admin']],
+            ['label' => 'Health Check', 'page' => 'health', 'icon' => 'fas fa-heartbeat', 'roles' => ['admin']],
             ['label' => 'Log Aktivitas', 'page' => 'activity_logs', 'icon' => 'fas fa-clipboard-list', 'roles' => ['admin']],
         ],
     ],

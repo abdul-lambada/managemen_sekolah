@@ -53,7 +53,7 @@ class AuthController extends Controller
         }
 
         $userModel = new User();
-        $user = $userModel->findByUsername($username);
+        $user = $userModel->findByName($username);
 
         if (!$user || !password_verify($password, $user['password'])) {
             activity_log('auth.login_failed', 'Login gagal untuk username ' . $username);
