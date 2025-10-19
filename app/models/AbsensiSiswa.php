@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-use DateTimeImmutable;
-use PDO;
-
 class AbsensiSiswa extends Model
 {
     protected string $table = 'absensi_siswa';
@@ -51,7 +48,7 @@ class AbsensiSiswa extends Model
 
     public function recentForStudent(int $siswaId, int $days = 14, int $limit = 30): array
     {
-        $startDate = (new DateTimeImmutable(sprintf('-%d days', $days)))->format('Y-m-d');
+        $startDate = date('Y-m-d', strtotime(sprintf('-%d days', $days)));
 
         $stmt = $this->db->prepare(
             "SELECT asw.*, s.nama_siswa, s.nisn, s.nis, k.nama_kelas
@@ -62,9 +59,9 @@ class AbsensiSiswa extends Model
              ORDER BY asw.tanggal DESC, asw.jam_masuk DESC
              LIMIT :limit"
         );
-        $stmt->bindValue(':siswa', $siswaId, PDO::PARAM_INT);
+        $stmt->bindValue(':siswa', $siswaId);
         $stmt->bindValue(':start', $startDate);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit);
         $stmt->execute();
 
         return $stmt->fetchAll();
