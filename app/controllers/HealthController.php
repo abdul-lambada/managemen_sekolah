@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-use PDO;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
+// Note: RecursiveDirectoryIterator and RecursiveIteratorIterator are used in getDirectorySize() method
+// If linter complains about unused imports, these are the full class names:
+// use RecursiveDirectoryIterator;
+// use RecursiveIteratorIterator;
 
 final class HealthController extends Controller
 {
@@ -144,7 +145,7 @@ final class HealthController extends Controller
         }
 
         $size = 0;
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path));
         foreach ($iterator as $file) {
             if ($file->isFile()) {
                 $size += $file->getSize();

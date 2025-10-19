@@ -487,9 +487,22 @@ CREATE TABLE `absensi_guru_mapel_log` (
   `timestamp` datetime NOT NULL,
   `status` enum('Masuk','Keluar') NOT NULL,
   `payload` json DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   KEY `idx_absensi_mapel_log_absensi` (`id_absensi_mapel`),
   KEY `idx_absensi_mapel_log_jadwal` (`id_jadwal`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `activity_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  KEY `idx_activity_logs_user_id` (`user_id`),
+  KEY `idx_activity_logs_action` (`action`),
+  KEY `idx_activity_logs_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- =============================================
@@ -648,6 +661,10 @@ ALTER TABLE `absensi_guru_mapel_log`
   ADD PRIMARY KEY (`id_log`),
   MODIFY `id_log` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
+ALTER TABLE `activity_logs`
+  ADD PRIMARY KEY (`id`),
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
 -- =============================================
 -- 6. FOREIGN KEY CONSTRAINTS
 -- =============================================
@@ -686,6 +703,9 @@ ALTER TABLE `absensi_guru_mapel`
 ALTER TABLE `absensi_guru_mapel_log`
   ADD CONSTRAINT `absensi_guru_mapel_log_ibfk_1` FOREIGN KEY (`id_absensi_mapel`) REFERENCES `absensi_guru_mapel` (`id_absensi_mapel`) ON DELETE SET NULL,
   ADD CONSTRAINT `absensi_guru_mapel_log_ibfk_2` FOREIGN KEY (`id_jadwal`) REFERENCES `jadwal_pelajaran` (`id_jadwal`) ON DELETE CASCADE;
+
+ALTER TABLE `activity_logs`
+  ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 -- =============================================
 -- 7. DATA SAMPLE

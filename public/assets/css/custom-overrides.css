@@ -25,3 +25,44 @@ body.bg-gradient-primary,
   background-attachment: fixed !important;
   background-size: cover !important;
 }
+
+/* Sidebar Dropdown Sub-menu Styling */
+.sidebar .collapse-inner {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(79, 70, 229, 0.3) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15) !important;
+  margin: 0.5rem !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.sidebar .collapse-item {
+  color: #e2e8f0 !important;
+  padding: 0.75rem 1rem !important;
+  text-decoration: none !important;
+  display: block !important;
+  border-radius: 0.25rem !important;
+  margin: 0.125rem 0 !important;
+  transition: all 0.15s ease-in-out !important;
+  font-weight: 500 !important;
+}
+
+.sidebar .collapse-item:hover {
+  color: #ffffff !important;
+  background-color: rgba(79, 70, 229, 0.2) !important;
+  text-decoration: none !important;
+  transform: translateX(2px) !important;
+}
+
+.sidebar .collapse-item.active {
+  color: #ffffff !important;
+  background-color: rgba(79, 70, 229, 0.3) !important;
+  font-weight: 600 !important;
+  border-left: 3px solid #4f46e5 !important;
+}
+
+.sidebar .collapse-item.active:hover {
+  color: #ffffff !important;
+  background-color: rgba(79, 70, 229, 0.4) !important;
+  transform: translateX(2px) !important;
+}

@@ -169,9 +169,26 @@ class GuruController extends Controller
 
         try {
             $model = new Guru();
-            $model->create($this->mapToDb($data));
-            flash('guru_alert', 'Data guru berhasil ditambahkan.', 'success');
+
+            // Log sebelum create
+            error_log("Creating new guru: {$data['nama_guru']} (NIP: {$data['nip']})");
+
+            $guruId = $model->create($this->mapToDb($data));
+
+            if ($guruId) {
+                error_log("Guru created successfully with ID: $guruId");
+                flash('guru_alert', "Data guru <strong>{$data['nama_guru']}</strong> berhasil ditambahkan.", 'success');
+            } else {
+                throw new Exception('Gagal mendapatkan ID guru setelah create');
+            }
+
         } catch (PDOException $e) {
+            error_log("Database error creating guru: " . $e->getMessage());
+            $_SESSION['guru_form_data'] = $data;
+            $_SESSION['guru_errors'] = ['Gagal menyimpan data: ' . $e->getMessage()];
+            redirect(route('guru', ['action' => 'create']));
+        } catch (Exception $e) {
+            error_log("Error creating guru: " . $e->getMessage());
             $_SESSION['guru_form_data'] = $data;
             $_SESSION['guru_errors'] = ['Gagal menyimpan data: ' . $e->getMessage()];
             redirect(route('guru', ['action' => 'create']));
@@ -197,6 +214,7 @@ class GuruController extends Controller
         }
 
         $data = $this->sanitizeInput($_POST);
+        $data['id'] = $id; // Pastikan ID disertakan untuk validasi
         $errors = $this->validate($data, true);
 
         if (!empty($errors)) {
@@ -207,9 +225,26 @@ class GuruController extends Controller
 
         try {
             $model = new Guru();
-            $model->update($id, $this->mapToDb($data));
-            flash('guru_alert', 'Data guru berhasil diperbarui.', 'success');
+
+            // Log sebelum update
+            error_log("Updating guru ID: $id - {$data['nama_guru']} (NIP: {$data['nip']})");
+
+            $updated = $model->update($id, $this->mapToDb($data));
+
+            if ($updated) {
+                error_log("Guru updated successfully: $id");
+                flash('guru_alert', "Data guru <strong>{$data['nama_guru']}</strong> berhasil diperbarui.", 'success');
+            } else {
+                throw new Exception('Tidak ada perubahan data atau guru tidak ditemukan');
+            }
+
         } catch (PDOException $e) {
+            error_log("Database error updating guru $id: " . $e->getMessage());
+            $_SESSION['guru_form_data'] = $data;
+            $_SESSION['guru_errors'] = ['Gagal memperbarui data: ' . $e->getMessage()];
+            redirect(route('guru', ['action' => 'edit', 'id' => $id]));
+        } catch (Exception $e) {
+            error_log("Error updating guru $id: " . $e->getMessage());
             $_SESSION['guru_form_data'] = $data;
             $_SESSION['guru_errors'] = ['Gagal memperbarui data: ' . $e->getMessage()];
             redirect(route('guru', ['action' => 'edit', 'id' => $id]));
@@ -236,9 +271,29 @@ class GuruController extends Controller
 
         try {
             $model = new Guru();
-            $model->delete($id, 'id_guru');
-            flash('guru_alert', 'Data guru berhasil dihapus.', 'success');
+
+            // Ambil data guru sebelum hapus untuk logging
+            $guru = $model->find($id);
+            if (!$guru) {
+                throw new Exception('Data guru tidak ditemukan');
+            }
+
+            error_log("Deleting guru ID: $id - {$guru['nama_guru']} (NIP: {$guru['nip']})");
+
+            $deleted = $model->delete($id, 'id_guru');
+
+            if ($deleted) {
+                error_log("Guru deleted successfully: $id");
+                flash('guru_alert', "Data guru <strong>{$guru['nama_guru']}</strong> berhasil dihapus.", 'success');
+            } else {
+                throw new Exception('Gagal menghapus data guru');
+            }
+
         } catch (PDOException $e) {
+            error_log("Database error deleting guru $id: " . $e->getMessage());
+            flash('guru_alert', 'Gagal menghapus data: ' . $e->getMessage(), 'danger');
+        } catch (Exception $e) {
+            error_log("Error deleting guru $id: " . $e->getMessage());
             flash('guru_alert', 'Gagal menghapus data: ' . $e->getMessage(), 'danger');
         }
 
@@ -263,30 +318,70 @@ class GuruController extends Controller
     {
         $errors = [];
 
-        if ($data['nama_guru'] === '') {
+        // Validasi nama guru
+        if (empty(trim($data['nama_guru']))) {
             $errors[] = 'Nama guru wajib diisi.';
+        } elseif (strlen($data['nama_guru']) < 2) {
+            $errors[] = 'Nama guru minimal 2 karakter.';
+        } elseif (strlen($data['nama_guru']) > 100) {
+            $errors[] = 'Nama guru maksimal 100 karakter.';
         }
 
-        if ($data['nip'] === '') {
+        // Validasi NIP
+        if (empty(trim($data['nip']))) {
             $errors[] = 'NIP wajib diisi.';
+        } elseif (!preg_match('/^[0-9]+$/', $data['nip'])) {
+            $errors[] = 'NIP harus berupa angka.';
+        } elseif (strlen($data['nip']) < 5) {
+            $errors[] = 'NIP minimal 5 digit.';
+        } elseif (strlen($data['nip']) > 20) {
+            $errors[] = 'NIP maksimal 20 digit.';
+        } elseif (!$isUpdate) {
+            // Cek duplikasi NIP hanya saat create
+            $pdo = db();
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM guru WHERE nip = ?");
+            $stmt->execute([$data['nip']]);
+            if ($stmt->fetchColumn() > 0) {
+                $errors[] = 'NIP sudah digunakan.';
+            }
         }
 
+        // Validasi jenis kelamin
         if (!in_array($data['jenis_kelamin'], ['Laki-laki', 'Perempuan'], true)) {
             $errors[] = 'Jenis kelamin tidak valid.';
         }
 
-        if ($data['alamat'] === '') {
+        // Validasi alamat
+        if (empty(trim($data['alamat']))) {
             $errors[] = 'Alamat wajib diisi.';
+        } elseif (strlen($data['alamat']) < 10) {
+            $errors[] = 'Alamat minimal 10 karakter.';
         }
 
-        if ($data['phone'] !== '' && !preg_match('/^[0-9+\- ]+$/', $data['phone'])) {
-            $errors[] = 'Nomor telepon tidak valid.';
+        // Validasi nomor telepon (opsional tapi harus valid jika diisi)
+        if (!empty($data['phone']) && !preg_match('/^[0-9+\- ]+$/', $data['phone'])) {
+            $errors[] = 'Nomor telepon tidak valid (hanya angka, +, -, spasi).';
+        } elseif (!empty($data['phone']) && strlen($data['phone']) < 10) {
+            $errors[] = 'Nomor telepon minimal 10 digit.';
         }
 
-        if ($data['tanggal_lahir']) {
+        // Validasi tanggal lahir (opsional tapi harus valid jika diisi)
+        if (!empty($data['tanggal_lahir'])) {
             $d = DateTime::createFromFormat('Y-m-d', $data['tanggal_lahir']);
             if (!$d || $d->format('Y-m-d') !== $data['tanggal_lahir']) {
                 $errors[] = 'Tanggal lahir tidak valid.';
+            } elseif ($d > new DateTime()) {
+                $errors[] = 'Tanggal lahir tidak boleh lebih dari hari ini.';
+            }
+        }
+
+        // Validasi user_id jika diisi
+        if (!empty($data['user_id'])) {
+            $pdo = db();
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = ? AND role = 'guru'");
+            $stmt->execute([$data['user_id']]);
+            if ($stmt->fetchColumn() === 0) {
+                $errors[] = 'User yang dipilih tidak valid atau bukan role guru.';
             }
         }
 
@@ -310,23 +405,22 @@ class GuruController extends Controller
     {
         $pdo = db();
 
-        $usedStmt = $pdo->query(
-            "SELECT user_id FROM guru WHERE user_id IS NOT NULL
-             UNION
-             SELECT user_id FROM siswa WHERE user_id IS NOT NULL"
-        );
+        // Hanya ambil user yang sudah digunakan oleh guru (untuk menghindari konflik)
+        $usedStmt = $pdo->query("SELECT user_id FROM guru WHERE user_id IS NOT NULL");
         $usedIds = array_map('intval', $usedStmt->fetchAll(PDO::FETCH_COLUMN));
         $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id > 0));
 
+        // Jika sedang edit, pastikan current user tetap tersedia
         if ($currentUserId !== null && $currentUserId > 0) {
             $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id !== $currentUserId));
         }
 
+        // Ambil semua user dengan role 'guru' yang belum digunakan
         $params = [];
-        $sql = "SELECT id, name, role FROM users";
+        $sql = "SELECT id, name, role FROM users WHERE role = 'guru'";
         if (!empty($usedIds)) {
             $placeholders = implode(',', array_fill(0, count($usedIds), '?'));
-            $sql .= " WHERE id NOT IN ($placeholders)";
+            $sql .= " AND id NOT IN ($placeholders)";
             $params = array_map('intval', $usedIds);
         }
         $sql .= " ORDER BY name";
@@ -335,6 +429,7 @@ class GuruController extends Controller
         $stmt->execute($params);
         $options = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Jika sedang edit dan current user tidak dalam daftar, tambahkan
         if ($currentUserId !== null && $currentUserId > 0) {
             $hasCurrent = false;
             foreach ($options as $option) {
@@ -345,7 +440,7 @@ class GuruController extends Controller
             }
 
             if (!$hasCurrent) {
-                $stmt = $pdo->prepare("SELECT id, name, role FROM users WHERE id = ? LIMIT 1");
+                $stmt = $pdo->prepare("SELECT id, name, role FROM users WHERE id = ? AND role = 'guru' LIMIT 1");
                 $stmt->execute([$currentUserId]);
                 $current = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($current) {
@@ -355,5 +450,13 @@ class GuruController extends Controller
         }
 
         return $options;
+    }
+
+    private function assertPost(): void
+    {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            exit('Metode tidak diizinkan');
+        }
     }
 }
