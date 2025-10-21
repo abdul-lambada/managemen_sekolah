@@ -145,7 +145,7 @@ $faviconUrl = !empty($appSettings['favicon']) ? uploads_url($appSettings['favico
                         </form>
                     </div>
                     <div class="card-footer text-center small text-muted">
-                        &copy; <?= date('Y') ?> <?= APP_NAME ?>. Hak cipta dilindungi.
+                        &copy; <?= date('Y') ?> <?= sanitize($appName) ?>. Hak cipta dilindungi.
                     </div>
                 </div>
             </div>
