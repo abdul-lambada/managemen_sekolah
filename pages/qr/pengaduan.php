@@ -1,8 +1,13 @@
 <?php
 $appSettings = app_settings();
 $appName = $appSettings['app_name'] ?: APP_NAME;
-$logoUrl = sanitize($logoUrl ?? '');
+$logoUrl = $logoUrl ?? '';
 $targetUrl = sanitize($targetUrl ?? '');
+// Fallback to school logo asset if empty
+if ($logoUrl === '' ) {
+    $logoUrl = asset('assets/img/logo_smk.png');
+}
+$logoUrl = sanitize($logoUrl);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -14,8 +19,9 @@ $targetUrl = sanitize($targetUrl ?? '');
     <link href="<?= asset('css/sb-admin-2.min.css') ?>" rel="stylesheet">
     <style>
         .qr-container { text-align:center; }
-        #qrcode { position: relative; display: inline-block; }
-        #logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; width: 64px; height: 64px; object-fit: contain; background: #fff; padding: 6px; }
+        .qr-wrap { position: relative; display: inline-block; }
+        #qrcode { display: inline-block; }
+        #logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; width: 64px; height: 64px; object-fit: contain; background: #fff; padding: 6px; z-index: 2; }
     </style>
 </head>
 <body>
@@ -29,8 +35,10 @@ $targetUrl = sanitize($targetUrl ?? '');
                 <div class="card-body">
                     <p class="text-muted">Pindai QR ini untuk membuka formulir pengaduan:</p>
                     <div class="qr-container mb-3">
-                        <div id="qrcode"></div>
-                        <img id="logo" src="<?= $logoUrl ?>" alt="Logo" onerror="this.style.display='none'">
+                        <div class="qr-wrap">
+                            <div id="qrcode"></div>
+                            <img id="logo" src="<?= $logoUrl ?>" alt="Logo">
+                        </div>
                     </div>
                     <div class="small text-monospace">URL: <?= $targetUrl ?></div>
                 </div>

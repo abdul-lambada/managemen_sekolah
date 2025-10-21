@@ -12,9 +12,15 @@ final class QrController extends Controller
         $url = trim($_GET['url'] ?? $defaultUrl);
         $logoUrl = trim($_GET['logo'] ?? '');
 
-        $app = app_settings();
-        if ($logoUrl === '' && !empty($app['favicon'])) {
-            $logoUrl = uploads_url($app['favicon']);
+        // Priority: explicit ?logo=... > default school logo asset > app favicon
+        if ($logoUrl === '') {
+            $defaultLogo = asset('assets/img/logo_smk.png');
+            $logoUrl = $defaultLogo;
+
+            $app = app_settings();
+            if (empty($defaultLogo) && !empty($app['favicon'])) {
+                $logoUrl = uploads_url($app['favicon']);
+            }
         }
 
         return [
