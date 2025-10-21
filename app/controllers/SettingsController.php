@@ -98,6 +98,11 @@ final class SettingsController extends Controller
             'app_tagline' => trim($input['app_tagline'] ?? ''),
             'favicon' => $_FILES['favicon'] ?? null,
             'favicon_existing' => trim($input['favicon_existing'] ?? ''),
+            // Attendance windows (HH:MM)
+            'attendance_morning_start' => trim($input['attendance_morning_start'] ?? ''),
+            'attendance_morning_end' => trim($input['attendance_morning_end'] ?? ''),
+            'attendance_evening_start' => trim($input['attendance_evening_start'] ?? ''),
+            'attendance_evening_end' => trim($input['attendance_evening_end'] ?? ''),
         ];
     }
 
@@ -121,6 +126,19 @@ final class SettingsController extends Controller
             }
         }
 
+        // Validate attendance windows (optional but must be HH:MM)
+        foreach ([
+            'attendance_morning_start',
+            'attendance_morning_end',
+            'attendance_evening_start',
+            'attendance_evening_end',
+        ] as $key) {
+            $val = $data[$key] ?? '';
+            if ($val !== '' && !preg_match('/^\d{2}:\d{2}$/', $val)) {
+                $errors[] = 'Format waktu tidak valid untuk ' . str_replace('_', ' ', $key) . ' (gunakan HH:MM).';
+            }
+        }
+
         return $errors;
     }
 
@@ -137,6 +155,17 @@ final class SettingsController extends Controller
 
             $faviconPath = $this->handleFaviconUpload($data['favicon'], $data['favicon_existing']);
             $this->upsert('favicon', $faviconPath);
+
+            // Save attendance windows (normalize to HH:MM:SS or null)
+            $toHms = static function (string $v): ?string {
+                if ($v === '') return null;
+                // $v is HH:MM validated earlier
+                return $v . ':00';
+            };
+            $this->upsert('attendance_morning_start', $toHms($data['attendance_morning_start']));
+            $this->upsert('attendance_morning_end', $toHms($data['attendance_morning_end']));
+            $this->upsert('attendance_evening_start', $toHms($data['attendance_evening_start']));
+            $this->upsert('attendance_evening_end', $toHms($data['attendance_evening_end']));
 
             $pdo->commit();
             app_settings(true);

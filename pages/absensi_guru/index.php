@@ -35,6 +35,8 @@
                             <th>Tanggal</th>
                             <th>Nama Guru</th>
                             <th>Status</th>
+                            <th>Masuk Pagi</th>
+                            <th>Pulang Sore</th>
                             <th>Jam Masuk</th>
                             <th>Jam Keluar</th>
                             <th>Catatan</th>
@@ -47,6 +49,22 @@
                                 <td><?= indo_date($row['tanggal']) ?></td>
                                 <td><?= sanitize($row['nama_guru']) ?></td>
                                 <td><?= attendance_badge($row['status_kehadiran']) ?></td>
+                                <td>
+                                    <?php if (!empty($row['daily_check_in_pagi'])): ?>
+                                        <?php $fullInRaw = trim(($row['tanggal'] ?? '') . ' ' . ($row['daily_check_in_pagi'] ?? '')); $fullIn = sanitize(indo_datetime($fullInRaw)); ?>
+                                        <span class="badge badge-success" data-toggle="tooltip" title="<?= $fullIn ?>"><?= sanitize($row['daily_check_in_pagi']) ?></span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">Belum</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($row['daily_check_out_sore'])): ?>
+                                        <?php $fullOutRaw = trim(($row['tanggal'] ?? '') . ' ' . ($row['daily_check_out_sore'] ?? '')); $fullOut = sanitize(indo_datetime($fullOutRaw)); ?>
+                                        <span class="badge badge-info" data-toggle="tooltip" title="<?= $fullOut ?>"><?= sanitize($row['daily_check_out_sore']) ?></span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">Belum</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= sanitize($row['jam_masuk'] ?? '-') ?></td>
                                 <td><?= sanitize($row['jam_keluar'] ?? '-') ?></td>
                                 <td><?= sanitize($row['catatan'] ?? '-') ?></td>
@@ -54,7 +72,7 @@
                         <?php endforeach; ?>
                         <?php if (empty($records)): ?>
                             <tr>
-                                <td colspan="7" class="text-center">Belum ada data absensi.</td>
+                                <td colspan="9" class="text-center">Belum ada data absensi.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -70,6 +88,11 @@
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/id.json'
             }
+        });
+
+        // Initialize Bootstrap tooltips for badges
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip();
         });
     });
 </script>

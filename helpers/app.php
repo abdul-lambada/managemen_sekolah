@@ -117,12 +117,16 @@ function app_settings(bool $refresh = false): array
         'app_name' => APP_NAME,
         'app_tagline' => '',
         'favicon' => null,
+        'attendance_morning_start' => null,
+        'attendance_morning_end' => null,
+        'attendance_evening_start' => null,
+        'attendance_evening_end' => null,
     ];
 
     try {
         ensure_settings_table();
 
-        $stmt = db()->prepare("SELECT option_key, option_value FROM settings WHERE option_key IN ('app_name', 'app_tagline', 'favicon')");
+        $stmt = db()->prepare("SELECT option_key, option_value FROM settings WHERE option_key IN ('app_name', 'app_tagline', 'favicon', 'attendance_morning_start', 'attendance_morning_end', 'attendance_evening_start', 'attendance_evening_end')");
         $stmt->execute();
         $rows = $stmt->fetchAll();
 

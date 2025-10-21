@@ -24,9 +24,13 @@ class AbsensiGuru extends Model
 
         $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-        $sql = "SELECT ag.*, g.nama_guru, g.nip
+        $sql = "SELECT ag.*, g.nama_guru, g.nip,
+                       kh.check_in_pagi AS daily_check_in_pagi,
+                       kh.check_out_sore AS daily_check_out_sore
                 FROM absensi_guru ag
                 JOIN guru g ON ag.id_guru = g.id_guru
+                LEFT JOIN kehadiran_guru_harian kh
+                  ON kh.guru_id = ag.id_guru AND kh.tanggal = ag.tanggal
                 {$where}
                 ORDER BY ag.tanggal DESC, ag.jam_masuk";
 

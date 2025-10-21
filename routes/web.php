@@ -40,6 +40,7 @@ return [
     'settings' => [SettingsController::class, 'index'],
     'settings_update' => [SettingsController::class, 'update'],
     'system_stats' => [SystemStatsController::class, 'index'],
+    'absensi_siswa_harian' => [AbsensiSiswaHarianController::class, 'index'],
     'pengaduan' => [PengaduanController::class, 'index'],
     'pengaduan_form' => [PublicPengaduanController::class, 'form'],
     'pengaduan_submit' => [PublicPengaduanController::class, 'submit'],

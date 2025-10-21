@@ -46,6 +46,7 @@ $menu = [
             ['label' => 'Jadwal Pelajaran', 'page' => 'jadwal', 'icon' => 'fas fa-calendar-alt', 'roles' => ['admin', 'guru']],
             ['label' => 'Absensi Guru', 'page' => 'absensi_guru', 'icon' => 'fas fa-chalkboard-teacher', 'roles' => ['admin', 'guru']],
             ['label' => 'Absensi Siswa', 'page' => 'absensi_siswa', 'icon' => 'fas fa-users', 'roles' => ['admin', 'guru']],
+            ['label' => 'Rekap Harian Siswa', 'page' => 'absensi_siswa_harian', 'icon' => 'fas fa-user-check', 'roles' => ['admin']],
             [
                 'label' => 'Laporan Absensi',
                 'page' => 'laporan_absensi',

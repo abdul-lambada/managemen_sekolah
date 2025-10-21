@@ -12,6 +12,142 @@ date_default_timezone_set('Asia/Jakarta');
 
 $pdo = db();
 
+/**
+ * Ensure unique index on absensi_guru_mapel(id_jadwal, tanggal) to prevent duplicates.
+ */
+function ensureAbsensiMapelUniqueIndex(PDO $pdo): void
+{
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(1) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'absensi_guru_mapel' AND index_name = 'uniq_jadwal_tanggal'");
+        $stmt->execute();
+        $exists = (int) $stmt->fetchColumn() > 0;
+        if (!$exists) {
+            $pdo->exec("ALTER TABLE absensi_guru_mapel ADD UNIQUE KEY uniq_jadwal_tanggal (id_jadwal, tanggal)");
+        }
+    } catch (Throwable $e) {
+        // ignore if lacking privilege; system will still function without the index
+    }
+}
+
+/**
+ * Map fingerprint UID to siswa_id if mapping table exists.
+ */
+function mapFingerprintToSiswa(PDO $pdo, string $fingerprintUid): ?int
+{
+    try {
+        $existsStmt = $pdo->prepare("SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'siswa_fingerprint'");
+        $existsStmt->execute();
+        if ((int) $existsStmt->fetchColumn() === 0) {
+            return null; // mapping belum tersedia
+        }
+
+        $stmt = $pdo->prepare('SELECT id_siswa FROM siswa_fingerprint WHERE fingerprint_uid = :uid LIMIT 1');
+        $stmt->execute(['uid' => $fingerprintUid]);
+        $id = $stmt->fetchColumn();
+        if ($id === false) {
+            return null;
+        }
+        return (int) $id;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function ensureDailyAttendanceStudentTable(PDO $pdo): void
+{
+    static $ensured = false;
+    if ($ensured) return;
+
+    $sql = "CREATE TABLE IF NOT EXISTS kehadiran_siswa_harian (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        siswa_id INT UNSIGNED NOT NULL,
+        tanggal DATE NOT NULL,
+        check_in_pagi TIME NULL,
+        check_out_sore TIME NULL,
+        sumber VARCHAR(50) DEFAULT 'fingerprint',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_siswa_tanggal (siswa_id, tanggal),
+        KEY siswa_id_idx (siswa_id),
+        KEY tanggal_idx (tanggal)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+    try {
+        $pdo->exec($sql);
+        $ensured = true;
+    } catch (Throwable $e) {
+        // ignore
+    }
+}
+
+function upsertDailyAttendanceStudent(PDO $pdo, int $siswaId, string $date, array $fields): void
+{
+    ensureDailyAttendanceStudentTable($pdo);
+    $stmt = $pdo->prepare('SELECT id, check_in_pagi, check_out_sore FROM kehadiran_siswa_harian WHERE siswa_id = :sid AND tanggal = :tanggal LIMIT 1');
+    $stmt->execute(['sid' => $siswaId, 'tanggal' => $date]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        $checkIn = $existing['check_in_pagi'];
+        $checkOut = $existing['check_out_sore'];
+        if (isset($fields['check_in_pagi'])) {
+            if (empty($checkIn) || $fields['check_in_pagi'] < $checkIn) {
+                $checkIn = $fields['check_in_pagi'];
+            }
+        }
+        if (isset($fields['check_out_sore'])) {
+            if (empty($checkOut) || $fields['check_out_sore'] > $checkOut) {
+                $checkOut = $fields['check_out_sore'];
+            }
+        }
+        $pdo->prepare('UPDATE kehadiran_siswa_harian SET check_in_pagi = :in, check_out_sore = :out, updated_at = NOW() WHERE id = :id')
+            ->execute(['in' => $checkIn, 'out' => $checkOut, 'id' => $existing['id']]);
+        return;
+    }
+
+    $pdo->prepare('INSERT INTO kehadiran_siswa_harian (siswa_id, tanggal, check_in_pagi, check_out_sore, sumber) VALUES (:sid, :tanggal, :in, :out, :sumber)')
+        ->execute([
+            'sid' => $siswaId,
+            'tanggal' => $date,
+            'in' => $fields['check_in_pagi'] ?? null,
+            'out' => $fields['check_out_sore'] ?? null,
+            'sumber' => 'fingerprint',
+        ]);
+}
+
+function processDailyAttendanceStudents(PDO $pdo, array $entries): int
+{
+    if (empty($entries)) return 0;
+    $win = getAttendanceWindows();
+    $processed = 0;
+    foreach ($entries as $entry) {
+        $uid = $entry['user_id'] ?? null;
+        $ts = $entry['timestamp'] ?? null;
+        if (!$uid || !$ts) continue;
+
+        $siswaId = mapFingerprintToSiswa($pdo, (string)$uid);
+        if (!$siswaId) continue; // skip jika tidak terpetakan ke siswa
+
+        $date = substr($ts, 0, 10);
+        $time = substr($ts, 11, 8);
+
+        if (withinMorningWindow($time, $win)) {
+            upsertDailyAttendanceStudent($pdo, $siswaId, $date, ['check_in_pagi' => $time]);
+            $processed++;
+            continue;
+        }
+
+        if (withinEveningWindow($time, $win)) {
+            upsertDailyAttendanceStudent($pdo, $siswaId, $date, ['check_out_sore' => $time]);
+            $processed++;
+            continue;
+        }
+    }
+    return $processed;
+}
+
+ensureAbsensiMapelUniqueIndex($pdo);
+
 $deviceStmt = $pdo->prepare('SELECT * FROM fingerprint_devices WHERE is_active = 1 ORDER BY nama_lokasi');
 $deviceStmt->execute();
 $devices = $deviceStmt->fetchAll();
@@ -341,6 +477,158 @@ function insertAbsensiMapelLog(PDO $pdo, int $absensiId, int $jadwalId, string $
     ]);
 }
 
+/**
+ * Daily attendance processing (pagi/pulang) for teachers.
+ */
+function getAttendanceWindows(): array
+{
+    // Default windows
+    $defaults = [
+        'morning_start' => '05:00:00',
+        'morning_end' => '09:00:00',
+        'evening_start' => '14:00:00',
+        'evening_end' => '23:59:59',
+    ];
+
+    try {
+        $settings = app_settings();
+        $overrides = [
+            'morning_start' => $settings['attendance_morning_start'] ?? null,
+            'morning_end' => $settings['attendance_morning_end'] ?? null,
+            'evening_start' => $settings['attendance_evening_start'] ?? null,
+            'evening_end' => $settings['attendance_evening_end'] ?? null,
+        ];
+
+        foreach ($overrides as $k => $v) {
+            if (is_string($v) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $v)) {
+                $defaults[$k] = $v;
+            }
+        }
+    } catch (Throwable $e) {
+        // fallback to defaults
+    }
+
+    return $defaults;
+}
+
+function ensureDailyAttendanceTable(PDO $pdo): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+
+    $sql = "CREATE TABLE IF NOT EXISTS kehadiran_guru_harian (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        guru_id INT UNSIGNED NOT NULL,
+        tanggal DATE NOT NULL,
+        check_in_pagi TIME NULL,
+        check_out_sore TIME NULL,
+        sumber VARCHAR(50) DEFAULT 'fingerprint',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_guru_tanggal (guru_id, tanggal),
+        KEY guru_id_idx (guru_id),
+        KEY tanggal_idx (tanggal)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+    $pdo->exec($sql);
+    $ensured = true;
+}
+
+function withinMorningWindow(string $time, array $win): bool
+{
+    return $time >= $win['morning_start'] && $time <= $win['morning_end'];
+}
+
+function withinEveningWindow(string $time, array $win): bool
+{
+    return $time >= $win['evening_start'] && $time <= $win['evening_end'];
+}
+
+function upsertDailyAttendance(PDO $pdo, int $guruId, string $date, array $fields): void
+{
+    ensureDailyAttendanceTable($pdo);
+
+    $stmt = $pdo->prepare('SELECT id, check_in_pagi, check_out_sore FROM kehadiran_guru_harian WHERE guru_id = :guru AND tanggal = :tanggal LIMIT 1');
+    $stmt->execute(['guru' => $guruId, 'tanggal' => $date]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        $checkIn = $existing['check_in_pagi'];
+        $checkOut = $existing['check_out_sore'];
+
+        if (isset($fields['check_in_pagi'])) {
+            if (empty($checkIn) || $fields['check_in_pagi'] < $checkIn) {
+                $checkIn = $fields['check_in_pagi'];
+            }
+        }
+        if (isset($fields['check_out_sore'])) {
+            if (empty($checkOut) || $fields['check_out_sore'] > $checkOut) {
+                $checkOut = $fields['check_out_sore'];
+            }
+        }
+
+        $pdo->prepare('UPDATE kehadiran_guru_harian SET check_in_pagi = :in, check_out_sore = :out, updated_at = NOW() WHERE id = :id')
+            ->execute([
+                'in' => $checkIn,
+                'out' => $checkOut,
+                'id' => $existing['id'],
+            ]);
+        return;
+    }
+
+    $pdo->prepare('INSERT INTO kehadiran_guru_harian (guru_id, tanggal, check_in_pagi, check_out_sore, sumber) VALUES (:guru, :tanggal, :in, :out, :sumber)')
+        ->execute([
+            'guru' => $guruId,
+            'tanggal' => $date,
+            'in' => $fields['check_in_pagi'] ?? null,
+            'out' => $fields['check_out_sore'] ?? null,
+            'sumber' => 'fingerprint',
+        ]);
+}
+
+function processDailyAttendance(PDO $pdo, array $entries): int
+{
+    if (empty($entries)) {
+        return 0;
+    }
+
+    $win = getAttendanceWindows();
+    $processed = 0;
+
+    foreach ($entries as $entry) {
+        $uid = $entry['user_id'] ?? null;
+        $ts = $entry['timestamp'] ?? null;
+        if (!$uid || !$ts) {
+            continue;
+        }
+
+        $guruId = mapFingerprintToGuru($pdo, (string) $uid);
+        if (!$guruId) {
+            continue;
+        }
+
+        // Normalize to local date/time
+        $date = substr($ts, 0, 10);
+        $time = substr($ts, 11, 8);
+
+        if (withinMorningWindow($time, $win)) {
+            upsertDailyAttendance($pdo, $guruId, $date, ['check_in_pagi' => $time]);
+            $processed++;
+            continue;
+        }
+
+        if (withinEveningWindow($time, $win)) {
+            upsertDailyAttendance($pdo, $guruId, $date, ['check_out_sore' => $time]);
+            $processed++;
+            continue;
+        }
+    }
+
+    return $processed;
+}
+
 function indoDayName(DateTime $dateTime): string
 {
     $names = [
@@ -386,6 +674,11 @@ foreach ($devices as $device) {
         }
 
         $inserted = persistAttendance($pdo, $entries, $device);
+        // Process daily (pagi/pulang) recap for guru
+        $dailyProcessed = processDailyAttendance($pdo, $entries);
+        // Process daily (pagi/pulang) recap for siswa
+        $studentDailyProcessed = processDailyAttendanceStudents($pdo, $entries);
+        // Process schedule-based (per jam pelajaran)
         $scheduleResult = processScheduleAttendance($pdo, $entries, $device);
 
         if (!empty($scheduleResult['late_notifications'])) {
@@ -409,6 +702,8 @@ foreach ($devices as $device) {
             'device' => $deviceInfo,
             'status' => 'success',
             'inserted' => $inserted,
+            'daily_processed' => $dailyProcessed,
+            'student_daily_processed' => $studentDailyProcessed,
             'schedule_processed' => $scheduleResult['processed'],
             'late_notices' => $lateCount,
         ];

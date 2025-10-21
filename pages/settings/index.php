@@ -63,6 +63,43 @@ $faviconPreview = !empty($currentSettings['favicon'])
                             <input type="file" class="form-control-file" id="favicon" name="favicon" accept=".png,.ico,.svg">
                         </div>
 
+                        <hr>
+                        <h6 class="font-weight-bold text-primary mb-3">Pengaturan Waktu Absensi</h6>
+
+                        <?php
+                        $ms = $currentSettings['attendance_morning_start'] ?? '';
+                        $me = $currentSettings['attendance_morning_end'] ?? '';
+                        $es = $currentSettings['attendance_evening_start'] ?? '';
+                        $ee = $currentSettings['attendance_evening_end'] ?? '';
+                        $toHHMM = static function ($v) { return $v ? substr((string)$v, 0, 5) : ''; };
+                        ?>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="attendance_morning_start">Mulai Check-in Pagi</label>
+                                <input type="time" class="form-control" id="attendance_morning_start" name="attendance_morning_start" step="60"
+                                       value="<?= sanitize($toHHMM($ms)) ?>" placeholder="05:00">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="attendance_morning_end">Akhir Check-in Pagi</label>
+                                <input type="time" class="form-control" id="attendance_morning_end" name="attendance_morning_end" step="60"
+                                       value="<?= sanitize($toHHMM($me)) ?>" placeholder="09:00">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="attendance_evening_start">Mulai Check-out Sore</label>
+                                <input type="time" class="form-control" id="attendance_evening_start" name="attendance_evening_start" step="60"
+                                       value="<?= sanitize($toHHMM($es)) ?>" placeholder="14:00">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="attendance_evening_end">Akhir Check-out Sore</label>
+                                <input type="time" class="form-control" id="attendance_evening_end" name="attendance_evening_end" step="60"
+                                       value="<?= sanitize($toHHMM($ee)) ?>" placeholder="23:59">
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-end">
                             <button type="submit" class="btn btn-primary">Simpan Pengaturan</button>
                         </div>
