@@ -14,7 +14,7 @@ final class QrController extends Controller
 
         // Priority: explicit ?logo=... > default school logo asset > app favicon
         if ($logoUrl === '') {
-            $defaultLogo = asset('assets/img/logo_smk.png');
+            $defaultLogo = asset('img/logo_smk.png');
             $logoUrl = $defaultLogo;
 
             $app = app_settings();
