@@ -44,4 +44,5 @@ return [
     'pengaduan' => [PengaduanController::class, 'index'],
     'pengaduan_form' => [PublicPengaduanController::class, 'form'],
     'pengaduan_submit' => [PublicPengaduanController::class, 'submit'],
+    'qr_pengaduan' => [QrController::class, 'pengaduan'],
 ];

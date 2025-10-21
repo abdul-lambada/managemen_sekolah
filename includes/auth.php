@@ -12,7 +12,8 @@ $publicRoutes = [
     'reset_password',
     'do_reset_password',
     'pengaduan_form',
-    'pengaduan_submit'
+    'pengaduan_submit',
+    'qr_pengaduan'
 ];
 $page = $_GET['page'] ?? 'dashboard';
 
