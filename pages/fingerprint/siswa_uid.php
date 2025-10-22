@@ -28,7 +28,17 @@
                     </div>
                     <div class="form-group col-md-4">
                         <label for="fingerprint_uid">UID Fingerprint</label>
-                        <input type="text" class="form-control" id="fingerprint_uid" name="fingerprint_uid" placeholder="Contoh: 2001" required>
+                        <?php if (!empty($uidOptions)): ?>
+                            <select class="form-control" id="fingerprint_uid" name="fingerprint_uid" required>
+                                <option value="">-- Pilih UID --</option>
+                                <?php foreach ($uidOptions as $uid): ?>
+                                    <option value="<?= sanitize($uid) ?>"><?= sanitize($uid) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="form-text text-muted">Daftar UID diambil dari log fingerprint terbaru.</small>
+                        <?php else: ?>
+                            <input type="text" class="form-control" id="fingerprint_uid" name="fingerprint_uid" placeholder="Contoh: 2001" required>
+                        <?php endif; ?>
                     </div>
                     <div class="form-group col-md-4">
                         <label for="device_serial">Serial Perangkat (opsional)</label>

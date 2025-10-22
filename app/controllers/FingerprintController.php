@@ -489,9 +489,12 @@ class FingerprintController extends Controller
         $siswaModel = new Siswa();
         $siswas = $siswaModel->all();
 
+        $uidOptions = $this->collectRecentUids(1000);
+
         $response = $this->view('fingerprint/siswa_uid', [
             'mappings' => $mappings,
             'siswas' => $siswas,
+            'uidOptions' => $uidOptions,
             'csrfToken' => ensure_csrf_token(),
             'alert' => flash('fingerprint_alert'),
         ], 'Mapping UID Fingerprint Siswa');
@@ -599,9 +602,12 @@ class FingerprintController extends Controller
             $gurus = [];
         }
 
+        $uidOptions = $this->collectRecentUids(1000);
+
         $response = $this->view('fingerprint/guru_uid', [
             'mappings' => $mappings,
             'gurus' => $gurus,
+            'uidOptions' => $uidOptions,
             'csrfToken' => ensure_csrf_token(),
             'alert' => flash('fingerprint_alert'),
         ], 'Mapping UID Fingerprint');
@@ -695,6 +701,32 @@ class FingerprintController extends Controller
                 'message' => json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
                 'status' => 'error',
             ]);
+            return [];
+        }
+    }
+
+    private function collectRecentUids(int $limit = 1000): array
+    {
+        try {
+            $stmt = db()->prepare("SELECT message FROM fingerprint_logs WHERE action = 'attendance.pull' ORDER BY created_at DESC LIMIT :lim");
+            $stmt->bindValue(':lim', max(1, (int)$limit), PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll() ?: [];
+            $uids = [];
+            foreach ($rows as $r) {
+                $msg = $r['message'] ?? '';
+                $data = json_decode($msg, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($data)) {
+                    $uid = $data['uid'] ?? null;
+                    if ($uid !== null && $uid !== '') {
+                        $uids[(string)$uid] = true;
+                    }
+                }
+            }
+            $list = array_keys($uids);
+            sort($list, SORT_NATURAL);
+            return $list;
+        } catch (Throwable $e) {
             return [];
         }
     }
