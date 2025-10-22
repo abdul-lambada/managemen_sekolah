@@ -32,11 +32,21 @@ class FingerprintController extends Controller
     {
         $deviceModel = new FingerprintDevice();
         $devices = $deviceModel->all();
-        $activeCount = $deviceModel->count(['is_active' => 1]);
+        // Use active() to compute active count to avoid driver-specific count filtering
+        $activeDevices = method_exists($deviceModel, 'active') ? $deviceModel->active() : [];
+        $activeCount = is_array($activeDevices) ? count($activeDevices) : 0;
 
         // Compute last sync summary from logs (recent 60 minutes)
-        $summary = $this->computeLastSyncSummary(60);
-        $lastSyncMap = $this->computeLastSyncPerDevice($devices, 1440);
+        try {
+            $summary = $this->computeLastSyncSummary(60);
+        } catch (Throwable $e) {
+            $summary = ['last_sync_at' => null, 'connected_devices' => 0, 'total_logs' => 0];
+        }
+        try {
+            $lastSyncMap = $this->computeLastSyncPerDevice($devices, 1440);
+        } catch (Throwable $e) {
+            $lastSyncMap = [];
+        }
 
         $response = $this->view('fingerprint/devices', [
             'devices' => $devices,
@@ -406,36 +416,66 @@ class FingerprintController extends Controller
         $stmt = db()->prepare($sqlGuru);
         $stmt->execute(['uid' => $uid]);
         $row = $stmt->fetch();
-        if ($row) { return $row; }
 
-        // Fallback to siswa mapping
-        $sqlSis = "SELECT u.*
-                FROM siswa_fingerprint sf
-                JOIN siswa s ON s.id_siswa = sf.id_siswa
-                JOIN users u ON u.id = s.user_id
-                WHERE sf.fingerprint_uid = :uid
-                LIMIT 1";
-        $stmt = db()->prepare($sqlSis);
-        $stmt->execute(['uid' => $uid]);
-        $row = $stmt->fetch();
-        return $row ?: null;
+            // Fallback to siswa mapping
+            $sqlSis = "SELECT u.*
+                    FROM siswa_fingerprint sf
+                    JOIN siswa s ON s.id_siswa = sf.id_siswa
+                    JOIN users u ON u.id = s.user_id
+                    WHERE sf.fingerprint_uid = :uid
+                    LIMIT 1";
+            $stmt = db()->prepare($sqlSis);
+            $stmt->execute(['uid' => $uid]);
+            $row = $stmt->fetch();
+            return $row ?: null;
+        } catch (Throwable $e) {
+            // log but do not interrupt flow
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'resolve_user_by_fingerprint_uid.error',
+                'message' => json_encode(['uid' => $uid, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+            return null;
+        }
     }
 
     private function resolveUserByDeviceUserId(string $userid): ?array
     {
-        $userModel = new User();
-        return $userModel->findByName($userid);
+        try {
+            $userModel = new User();
+            return $userModel->findByName($userid);
+        } catch (Throwable $e) {
+            // log but do not interrupt flow
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'resolve_user_by_device_user_id.error',
+                'message' => json_encode(['userid' => $userid, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+            return null;
+        }
     }
 
     private function insertKehadiran(int $userId, string $userName, ?string $timestamp, string $status): void
     {
-        $stmt = db()->prepare('INSERT INTO tbl_kehadiran (user_id, user_name, timestamp, status) VALUES (:uid, :name, :ts, :status)');
-        $stmt->execute([
-            'uid' => $userId,
-            'name' => $userName,
-            'ts' => $timestamp ?: date('Y-m-d H:i:s'),
-            'status' => $status,
-        ]);
+        try {
+            $stmt = db()->prepare('INSERT INTO tbl_kehadiran (user_id, user_name, timestamp, status) VALUES (:uid, :name, :ts, :status)');
+            $stmt->execute([
+                'uid' => $userId,
+                'name' => $userName,
+                'ts' => $timestamp ?: date('Y-m-d H:i:s'),
+                'status' => $status,
+            ]);
+        } catch (Throwable $e) {
+            // log but do not interrupt flow
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'insert_kehadiran.error',
+                'message' => json_encode(['userid' => $userId, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+        }
     }
 
     public function uids_siswa(): array
@@ -478,8 +518,8 @@ class FingerprintController extends Controller
             flash('fingerprint_alert', implode(' ', $errors), 'danger');
             redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
         }
-        $stmt = db()->prepare('INSERT INTO siswa_fingerprint (id_siswa, fingerprint_uid, device_serial, created_at, updated_at) VALUES (:id_siswa, :uid, :serial, NOW(), NOW()) ON DUPLICATE KEY UPDATE device_serial = VALUES(device_serial), updated_at = NOW()');
         try {
+            $stmt = db()->prepare('INSERT INTO siswa_fingerprint (id_siswa, fingerprint_uid, device_serial, created_at, updated_at) VALUES (:id_siswa, :uid, :serial, NOW(), NOW()) ON DUPLICATE KEY UPDATE device_serial = VALUES(device_serial), updated_at = NOW()');
             $stmt->execute([
                 'id_siswa' => $idSiswa,
                 'uid' => $uid,
@@ -506,14 +546,31 @@ class FingerprintController extends Controller
             flash('fingerprint_alert', 'Param tidak valid.', 'danger');
             redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
         }
-        $stmt = db()->prepare('DELETE FROM siswa_fingerprint WHERE id_siswa = :id_siswa AND fingerprint_uid = :uid');
-        $stmt->execute(['id_siswa' => $idSiswa, 'uid' => $uid]);
-        flash('fingerprint_alert', 'Mapping UID siswa dihapus.', 'success');
+        try {
+            $stmt = db()->prepare('DELETE FROM siswa_fingerprint WHERE id_siswa = :id_siswa AND fingerprint_uid = :uid');
+            $stmt->execute(['id_siswa' => $idSiswa, 'uid' => $uid]);
+            flash('fingerprint_alert', 'Mapping UID siswa dihapus.', 'success');
+        } catch (Throwable $e) {
+            flash('fingerprint_alert', 'Gagal menghapus mapping siswa: ' . $e->getMessage(), 'danger');
+        }
         redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
     }
 
     private function fetchSiswaUidMappings(): array
     {
+        try {
+            $sql = 'SELECT sf.*, s.nama_siswa FROM siswa_fingerprint sf JOIN siswa s ON s.id_siswa = sf.id_siswa ORDER BY s.nama_siswa';
+            return db()->query($sql)->fetchAll();
+        } catch (Throwable $e) {
+            // log but do not interrupt flow
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'fetch_siswa_uid_mappings.error',
+                'message' => json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+            return [];
+        }
         $sql = 'SELECT sf.*, s.nama_siswa FROM siswa_fingerprint sf JOIN siswa s ON s.id_siswa = sf.id_siswa ORDER BY s.nama_siswa';
         return db()->query($sql)->fetchAll();
     }
