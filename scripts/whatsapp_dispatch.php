@@ -10,6 +10,27 @@ require_once $basePath . '/helpers/app.php';
 
 date_default_timezone_set('Asia/Jakarta');
 
+/**
+ * Output helpers that work in CLI and non-CLI contexts.
+ */
+function out(string $message): void
+{
+    if (PHP_SAPI === 'cli') {
+        $h = @fopen('php://stdout', 'w');
+        if (is_resource($h)) { fwrite($h, $message); fclose($h); return; }
+    }
+    echo $message;
+}
+
+function err(string $message): void
+{
+    if (PHP_SAPI === 'cli') {
+        $h = @fopen('php://stderr', 'w');
+        if (is_resource($h)) { fwrite($h, $message); fclose($h); return; }
+    }
+    error_log(trim($message));
+}
+
 $options = getopt('', ['limit::']);
 $batchLimit = isset($options['limit']) ? max(1, (int) $options['limit']) : 20;
 
@@ -19,7 +40,7 @@ $configStmt = $pdo->query('SELECT * FROM whatsapp_config ORDER BY id ASC LIMIT 1
 $config = $configStmt->fetch();
 
 if (!$config || empty($config['api_key'])) {
-    fwrite(STDERR, "[ERROR] Konfigurasi WhatsApp tidak ditemukan atau API key kosong.\n");
+    err("[ERROR] Konfigurasi WhatsApp tidak ditemukan atau API key kosong.\n");
     exit(1);
 }
 
@@ -43,7 +64,7 @@ if (!$jobs) {
         'message' => 'Tidak ada pesan pending.'
     ], JSON_UNESCAPED_UNICODE));
 
-    fwrite(STDOUT, "Tidak ada pesan pending.\n");
+    out("Tidak ada pesan pending.\n");
     exit(0);
 }
 
@@ -65,15 +86,15 @@ foreach ($jobs as $job) {
         if ($status === 'success') {
             $successCount++;
             markAutomationLog($pdo, (int) $job['id'], true, null);
-            fwrite(STDOUT, "[OK] Pesan ke {$job['phone_number']} berhasil dikirim.\n");
+            out("[OK] Pesan ke {$job['phone_number']} berhasil dikirim.\n");
         } else {
             $failureCount++;
             markAutomationLog($pdo, (int) $job['id'], false, $detail);
-            fwrite(STDOUT, "[FAIL] Pesan ke {$job['phone_number']} gagal: {$detail}\n");
+            out("[FAIL] Pesan ke {$job['phone_number']} gagal: {$detail}\n");
         }
     } catch (Throwable $e) {
         $failureCount++;
-        fwrite(STDERR, "[ERROR] Pengiriman ke {$job['phone_number']} gagal: {$e->getMessage()}\n");
+        err("[ERROR] Pengiriman ke {$job['phone_number']} gagal: {$e->getMessage()}\n");
         updateLog($pdo, (int) $job['id'], 'failed', null, $e->getMessage());
         markAutomationLog($pdo, (int) $job['id'], false, $e->getMessage());
     }
@@ -88,7 +109,7 @@ updateSystemStat($pdo, 'whatsapp_dispatch_last_run', json_encode([
     'message' => $failureCount > 0 ? 'Beberapa pesan gagal dikirim.' : 'Seluruh pesan berhasil dikirim.'
 ], JSON_UNESCAPED_UNICODE));
 
-fwrite(STDOUT, "Selesai. Berhasil: {$successCount}, Gagal: {$failureCount}.\n");
+out("Selesai. Berhasil: {$successCount}, Gagal: {$failureCount}.\n");
 exit($failureCount > 0 ? 2 : 0);
 
 /**
