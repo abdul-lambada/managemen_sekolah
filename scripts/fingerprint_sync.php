@@ -10,6 +10,27 @@ require_once $basePath . '/helpers/app.php';
 
 date_default_timezone_set('Asia/Jakarta');
 
+/**
+ * Output helpers that work in CLI and non-CLI contexts.
+ */
+function out(string $message): void
+{
+    if (PHP_SAPI === 'cli') {
+        $h = @fopen('php://stdout', 'w');
+        if (is_resource($h)) { fwrite($h, $message); fclose($h); return; }
+    }
+    echo $message;
+}
+
+function err(string $message): void
+{
+    if (PHP_SAPI === 'cli') {
+        $h = @fopen('php://stderr', 'w');
+        if (is_resource($h)) { fwrite($h, $message); fclose($h); return; }
+    }
+    error_log(trim($message));
+}
+
 $pdo = db();
 
 /**
@@ -153,7 +174,7 @@ $deviceStmt->execute();
 $devices = $deviceStmt->fetchAll();
 
 if (!$devices) {
-    fwrite(STDOUT, "Tidak ada perangkat aktif.\n");
+    out("Tidak ada perangkat aktif.\n");
     exit(0);
 }
 
@@ -655,7 +676,7 @@ $summary = [
 
 foreach ($devices as $device) {
     $deviceInfo = sprintf('%s (%s:%d)', $device['nama_lokasi'], $device['ip'], (int) $device['port']);
-    fwrite(STDOUT, "Sinkronisasi perangkat: {$deviceInfo}\n");
+    out("Sinkronisasi perangkat: {$deviceInfo}\n");
 
     try {
         $entries = pullAttendanceFromDevice($device);
@@ -710,7 +731,7 @@ foreach ($devices as $device) {
         $summary['total_success']++;
     } catch (Throwable $e) {
         logFingerprint($pdo, 'sync', $e->getMessage(), 'error', $deviceInfo);
-        fwrite(STDERR, "[ERROR] {$deviceInfo}: {$e->getMessage()}\n");
+        err("[ERROR] {$deviceInfo}: {$e->getMessage()}\n");
         $summary['devices'][] = [
             'device' => $deviceInfo,
             'status' => 'error',
