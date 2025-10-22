@@ -35,7 +35,67 @@
                                     </div>
                                 <?php endif; ?>
                                 <?php if (!empty($log['meta'])): ?>
-                                    <pre class="small bg-light p-2 rounded border"><?= sanitize(json_encode($log['meta'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                    <?php if ($key === 'fingerprint'): ?>
+                                        <?php $m = $log['meta']; ?>
+                                        <?php if (!empty($m['message'])): ?>
+                                            <div class="alert alert-<?= ($log['badge'] ?? 'secondary') === 'success' ? 'success' : (($log['badge'] ?? '') === 'warning' ? 'warning' : 'danger') ?> py-1 mb-2 small">
+                                                <?= sanitize($m['message']) ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <div class="small mb-2">
+                                            <div>Processed: <strong><?= (int)($m['processed'] ?? ($m['schedule_processed'] ?? 0)) ?></strong></div>
+                                            <div>
+                                                Sukses: <span class="badge badge-success"><?= (int)($m['total_success'] ?? 0) ?></span>
+                                                Gagal: <span class="badge badge-danger"><?= (int)($m['total_failure'] ?? 0) ?></span>
+                                                Peringatan: <span class="badge badge-warning"><?= (int)($m['total_warning'] ?? 0) ?></span>
+                                                Terlambat: <span class="badge badge-info"><?= (int)($m['late_notifications'] ?? 0) ?></span>
+                                            </div>
+                                        </div>
+
+                                        <?php if (!empty($m['devices']) && is_array($m['devices'])): ?>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-2">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Perangkat</th>
+                                                            <th>Status</th>
+                                                            <th title="Jumlah entri disimpan">Insert</th>
+                                                            <th title="Rekap harian guru">Guru</th>
+                                                            <th title="Rekap harian siswa">Siswa</th>
+                                                            <th title="Terproses jadwal">Jadwal</th>
+                                                            <th>Catatan</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($m['devices'] as $d): ?>
+                                                            <tr>
+                                                                <td><?= sanitize($d['device'] ?? '-') ?></td>
+                                                                <td>
+                                                                    <?php $db = ($d['status'] ?? 'secondary'); $badge = $db === 'success' ? 'success' : ($db === 'warning' ? 'warning' : ($db === 'error' ? 'danger' : 'secondary')); ?>
+                                                                    <span class="badge badge-<?= $badge ?>"><?= sanitize(ucfirst($d['status'] ?? '-')) ?></span>
+                                                                </td>
+                                                                <td><?= (int)($d['inserted'] ?? 0) ?></td>
+                                                                <td><?= (int)($d['daily_processed'] ?? 0) ?></td>
+                                                                <td><?= (int)($d['student_daily_processed'] ?? 0) ?></td>
+                                                                <td><?= (int)($d['schedule_processed'] ?? 0) ?></td>
+                                                                <td class="text-truncate" style="max-width:220px;" title="<?= sanitize($d['message'] ?? '') ?>">
+                                                                    <?= sanitize($d['message'] ?? '') ?>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <details class="small">
+                                            <summary>Lihat detail mentah</summary>
+                                            <pre class="small bg-light p-2 rounded border mb-0"><?= sanitize(json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                        </details>
+                                    <?php else: ?>
+                                        <pre class="small bg-light p-2 rounded border"><?= sanitize(json_encode($log['meta'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                             <div>
