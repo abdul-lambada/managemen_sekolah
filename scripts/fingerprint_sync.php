@@ -767,8 +767,12 @@ exit($summary['total_failure'] > 0 ? 2 : 0);
  */
 function pullAttendanceFromDevice(array $device): array
 {
-    $autoload = BASE_PATH . '/vendor/autoload.php';
+    // Guard PHP version for composer packages requiring >=8.1
+    if (PHP_VERSION_ID < 80100) {
+        throw new RuntimeException('PHP 8.1+ diperlukan untuk modul ZKLib. Versi saat ini: ' . PHP_VERSION . '. Mohon jalankan script pada PHP 8.1+ atau sediakan bridge eksternal.');
+    }
 
+    $autoload = BASE_PATH . '/vendor/autoload.php';
     if (!class_exists('ZKLib')) {
         if (file_exists($autoload)) {
             require_once $autoload;
@@ -849,9 +853,10 @@ function logFingerprint(PDO $pdo, string $action, string $message, string $statu
 
 function updateSystemStat(PDO $pdo, string $key, string $value): void
 {
-    $stmt = $pdo->prepare('INSERT INTO system_stats (stat_key, stat_value, updated_at) VALUES (:key, :value, NOW()) ON DUPLICATE KEY UPDATE stat_value = :value, updated_at = NOW()');
+    $stmt = $pdo->prepare('INSERT INTO system_stats (stat_key, stat_value, updated_at) VALUES (:key1, :value1, NOW()) ON DUPLICATE KEY UPDATE stat_value = :value2, updated_at = NOW()');
     $stmt->execute([
-        'key' => $key,
-        'value' => $value,
+        'key1' => $key,
+        'value1' => $value,
+        'value2' => $value,
     ]);
 }
