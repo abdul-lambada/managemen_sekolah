@@ -166,11 +166,12 @@ function sendFonnteRequest(string $apiUrl, string $apiKey, array $payload): arra
  */
 function updateLog(PDO $pdo, int $id, string $status, ?string $messageId, ?string $response): void
 {
-    $stmt = $pdo->prepare('UPDATE whatsapp_logs SET status = :status, message_id = :message_id, response = :response, retry_count = CASE WHEN :status = "success" THEN retry_count ELSE retry_count + 1 END, sent_at = CASE WHEN :status = "success" THEN NOW() ELSE sent_at END, updated_at = NOW() WHERE id = :id');
+    $stmt = $pdo->prepare('UPDATE whatsapp_logs SET status = :status, message_id = :message_id, response = :response, retry_count = CASE WHEN :is_success = 1 THEN retry_count ELSE retry_count + 1 END, sent_at = CASE WHEN :is_success = 1 THEN NOW() ELSE sent_at END, updated_at = NOW() WHERE id = :id');
     $stmt->execute([
         'status' => $status,
         'message_id' => $messageId,
         'response' => $response,
+        'is_success' => $status === 'success' ? 1 : 0,
         'id' => $id,
     ]);
 }
@@ -190,9 +191,10 @@ function markAutomationLog(PDO $pdo, int $logId, bool $success, ?string $error):
 
 function updateSystemStat(PDO $pdo, string $key, string $value): void
 {
-    $stmt = $pdo->prepare('INSERT INTO system_stats (stat_key, stat_value, updated_at) VALUES (:key, :value, NOW()) ON DUPLICATE KEY UPDATE stat_value = :value, updated_at = NOW()');
+    $stmt = $pdo->prepare('INSERT INTO system_stats (stat_key, stat_value, updated_at) VALUES (:key1, :value1, NOW()) ON DUPLICATE KEY UPDATE stat_value = :value2, updated_at = NOW()');
     $stmt->execute([
-        'key' => $key,
-        'value' => $value,
+        'key1' => $key,
+        'value1' => $value,
+        'value2' => $value,
     ]);
 }

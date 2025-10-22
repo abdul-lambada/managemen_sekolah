@@ -471,14 +471,104 @@ class FingerprintController extends Controller
                 'ts' => $timestamp ?: date('Y-m-d H:i:s'),
                 'status' => $status,
             ]);
+
+            $phone = $this->resolveUserPhoneNumber($userId);
+            if ($phone) {
+                $when = $timestamp ?: date('Y-m-d H:i:s');
+                $template = $this->resolveAttendanceTemplateName();
+                if ($template) {
+                    // Kirim berdasarkan template; dispatcher akan memakai field template_name
+                    $this->enqueueWhatsAppMessage($phone, null, $template);
+                } else {
+                    // Fallback ke pesan teks biasa
+                    $text = sprintf('Halo %s, kehadiran Anda tercatat pada %s. Status: %s.', $userName, indo_datetime($when), $status);
+                    $this->enqueueWhatsAppMessage($phone, $text, null);
+                }
+            }
         } catch (Throwable $e) {
-            // log but do not interrupt flow
             $logModel = new FingerprintLog();
             $logModel->create([
                 'action' => 'insert_kehadiran.error',
                 'message' => json_encode(['userid' => $userId, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
                 'status' => 'error',
             ]);
+        }
+    }
+
+    private function resolveUserPhoneNumber(int $userId): ?string
+    {
+        try {
+            $stmt = db()->prepare('SELECT phone, no_hp FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $u = $stmt->fetch();
+            $phone = $u['phone'] ?? ($u['no_hp'] ?? null);
+            if ($phone) { return $this->normalizePhoneNumber($phone); }
+
+            $stmt = db()->prepare('SELECT g.no_hp, g.telepon FROM guru g WHERE g.user_id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $g = $stmt->fetch();
+            $phone = $g['no_hp'] ?? ($g['telepon'] ?? null);
+            if ($phone) { return $this->normalizePhoneNumber($phone); }
+
+            $stmt = db()->prepare('SELECT s.no_hp, s.telepon FROM siswa s WHERE s.user_id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $s = $stmt->fetch();
+            $phone = $s['no_hp'] ?? ($s['telepon'] ?? null);
+            if ($phone) { return $this->normalizePhoneNumber($phone); }
+
+            return null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    private function normalizePhoneNumber(string $raw): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $raw);
+        if ($digits === '') { return null; }
+        if (strpos($digits, '62') === 0) { return $digits; }
+        if ($digits[0] === '0') { return '62' . substr($digits, 1); }
+        return '62' . $digits;
+    }
+
+    private function enqueueWhatsAppMessage(string $phone, string $message, ?string $templateName): void
+    {
+        try {
+            $stmt = db()->prepare('INSERT INTO whatsapp_logs (phone_number, message, template_name, status, created_at, updated_at) VALUES (:phone, :message, :template, :status, NOW(), NOW())');
+            $stmt->execute([
+                'phone' => $phone,
+                'message' => $message,
+                'template' => $templateName,
+                'status' => 'pending',
+            ]);
+        } catch (Throwable $e) {
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'whatsapp.enqueue.error',
+                'message' => json_encode(['phone' => $phone, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+        }
+    }
+
+    private function resolveAttendanceTemplateName(): ?string
+    {
+        try {
+            // Prioritaskan nama template umum untuk kehadiran jika tersedia
+            $names = ['absensi_guru', 'absensi_siswa', 'absensi_kehadiran', 'absensi_info'];
+            $in = implode(',', array_fill(0, count($names), '?'));
+            $stmt = db()->prepare("SELECT name FROM whatsapp_message_templates WHERE is_active = 1 AND name IN ($in) ORDER BY FIELD(name, " . implode(',', array_map(fn($n)=>"'".$n."'", $names)) . ") LIMIT 1");
+            $stmt->execute($names);
+            $row = $stmt->fetch();
+            if ($row && !empty($row['name'])) {
+                return (string)$row['name'];
+            }
+            // Fallback: ambil template aktif kategori UTILITY
+            $stmt = db()->query("SELECT name FROM whatsapp_message_templates WHERE is_active = 1 AND category = 'UTILITY' ORDER BY id ASC LIMIT 1");
+            $row = $stmt->fetch();
+            return $row ? (string)$row['name'] : null;
+        } catch (Throwable $e) {
+            return null;
         }
     }
 
