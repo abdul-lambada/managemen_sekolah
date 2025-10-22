@@ -406,16 +406,20 @@ class FingerprintController extends Controller
 
     private function resolveUserByFingerprintUid(string $uid): ?array
     {
-        // Try guru mapping first
-        $sqlGuru = "SELECT u.*
-                FROM guru_fingerprint gf
-                JOIN guru g ON g.id_guru = gf.id_guru
-                JOIN users u ON u.id = g.user_id
-                WHERE gf.fingerprint_uid = :uid
-                LIMIT 1";
-        $stmt = db()->prepare($sqlGuru);
-        $stmt->execute(['uid' => $uid]);
-        $row = $stmt->fetch();
+        try {
+            // Try guru mapping first
+            $sqlGuru = "SELECT u.*
+                    FROM guru_fingerprint gf
+                    JOIN guru g ON g.id_guru = gf.id_guru
+                    JOIN users u ON u.id = g.user_id
+                    WHERE gf.fingerprint_uid = :uid
+                    LIMIT 1";
+            $stmt = db()->prepare($sqlGuru);
+            $stmt->execute(['uid' => $uid]);
+            $row = $stmt->fetch();
+            if ($row) {
+                return $row;
+            }
 
             // Fallback to siswa mapping
             $sqlSis = "SELECT u.*
