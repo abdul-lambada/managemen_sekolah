@@ -47,7 +47,7 @@
                 <h6 class="m-0 font-weight-bold text-primary mr-3">Daftar Perangkat</h6>
                 <?php if (!empty($lastSyncSummary['last_sync_at'])): ?>
                     <span class="badge badge-light border mr-2">
-                        Last Sync: <?= time_ago($lastSyncSummary['last_sync_at']) ?>
+                        Last Sync: <?= indo_datetime($lastSyncSummary['last_sync_at']) ?>
                     </span>
                     <span class="badge badge-primary mr-2">
                         <?= (int)($lastSyncSummary['connected_devices'] ?? 0) ?>/<?= number_format($activeCount ?? 0) ?> device
