@@ -28,3 +28,37 @@ if (!defined('APP_NAME')) {
 if (!defined('APP_URL')) {
     define('APP_URL', rtrim($config['APP_URL'], '/'));
 }
+
+if (!defined('PHP_CLI_BIN')) {
+    $candidate = $config['PHP_CLI_BIN'] ?? null;
+    if (is_string($candidate) && $candidate !== '' && @is_file($candidate)) {
+        define('PHP_CLI_BIN', $candidate);
+    } else {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $win = rtrim(PHP_BINDIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php.exe';
+            define('PHP_CLI_BIN', @is_file($win) ? $win : 'C:\\xampp\\php\\php.exe');
+        } else {
+            $bins = [
+                '/opt/plesk/php/8.3/bin/php',
+                '/opt/plesk/php/8.2/bin/php',
+                '/opt/plesk/php/8.1/bin/php',
+                '/opt/cpanel/ea-php83/root/usr/bin/php',
+                '/opt/cpanel/ea-php82/root/usr/bin/php',
+                '/opt/cpanel/ea-php81/root/usr/bin/php',
+                '/usr/bin/php8.3',
+                '/usr/bin/php8.2',
+                '/usr/bin/php8.1',
+                '/usr/local/bin/php8.3',
+                '/usr/local/bin/php8.2',
+                '/usr/local/bin/php8.1',
+                '/usr/bin/php',
+                '/usr/local/bin/php',
+            ];
+            $found = null;
+            foreach ($bins as $b) {
+                if (@is_file($b) && @is_executable($b)) { $found = $b; break; }
+            }
+            define('PHP_CLI_BIN', $found ?: PHP_BINARY);
+        }
+    }
+}
