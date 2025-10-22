@@ -140,13 +140,45 @@ class AutomationController extends Controller
 
     private function resolvePhpBinary(): string
     {
+        // 1) Allow override via constant from config/app.php
+        if (defined('PHP_CLI_BIN') && is_string(PHP_CLI_BIN) && is_file(PHP_CLI_BIN)) {
+            return PHP_CLI_BIN;
+        }
+
+        // 2) Windows default
         if (PHP_OS_FAMILY === 'Windows') {
             $candidate = rtrim(PHP_BINDIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php.exe';
             if (is_file($candidate)) {
                 return $candidate;
             }
+            return 'C:\\xampp\\php\\php.exe';
         }
 
+        // 3) Common hosting paths, prefer PHP 8.1+ (Plesk/cPanel)
+        $candidates = [
+            '/opt/plesk/php/8.3/bin/php',
+            '/opt/plesk/php/8.2/bin/php',
+            '/opt/plesk/php/8.1/bin/php',
+            '/opt/cpanel/ea-php83/root/usr/bin/php',
+            '/opt/cpanel/ea-php82/root/usr/bin/php',
+            '/opt/cpanel/ea-php81/root/usr/bin/php',
+            '/usr/bin/php8.3',
+            '/usr/bin/php8.2',
+            '/usr/bin/php8.1',
+            '/usr/local/bin/php8.3',
+            '/usr/local/bin/php8.2',
+            '/usr/local/bin/php8.1',
+            '/usr/bin/php',
+            '/usr/local/bin/php',
+        ];
+
+        foreach ($candidates as $bin) {
+            if (is_file($bin) && is_executable($bin)) {
+                return $bin;
+            }
+        }
+
+        // 4) Fallback to current binary
         return PHP_BINARY;
     }
 
