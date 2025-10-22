@@ -15,8 +15,12 @@
     <style>
         .automation-card-pre { white-space: pre-wrap; word-break: break-word; overflow: auto; max-height: 240px; }
         .automation-devices { max-height: 240px; overflow: auto; }
+        .automation-devices table { table-layout: fixed; width: 100%; }
+        .automation-devices th, .automation-devices td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .automation-details pre { white-space: pre-wrap; word-break: break-word; overflow: auto; max-height: 280px; }
         .automation-note { word-break: break-word; }
+        .automation-card { overflow: hidden; }
+        details.automation-details > summary { cursor: pointer; }
     </style>
 
     <div class="row">
@@ -26,7 +30,7 @@
         ] as $key => $config): ?>
             <?php $log = $logs[$key] ?? ['badge' => 'secondary', 'label' => 'Belum ada data', 'meta' => []]; ?>
             <div class="col-xl-6 col-md-12 mb-4">
-                <div class="card border-left-<?= sanitize($log['badge']) ?> shadow h-100">
+                <div class="card border-left-<?= sanitize($log['badge']) ?> shadow h-100 automation-card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
