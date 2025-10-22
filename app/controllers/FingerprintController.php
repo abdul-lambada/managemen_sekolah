@@ -575,7 +575,127 @@ class FingerprintController extends Controller
             ]);
             return [];
         }
-        $sql = 'SELECT sf.*, s.nama_siswa FROM siswa_fingerprint sf JOIN siswa s ON s.id_siswa = sf.id_siswa ORDER BY s.nama_siswa';
-        return db()->query($sql)->fetchAll();
+    }
+
+    public function uids(): array
+    {
+        $this->requireRole('admin');
+
+        $mappings = $this->fetchGuruUidMappings();
+
+        // Use compact guru options list
+        $gurus = [];
+        try {
+            $guruModel = new Guru();
+            if (method_exists($guruModel, 'options')) {
+                $gurus = $guruModel->options();
+            } else {
+                // Fallback minimal data
+                $gurus = array_map(static function ($g) {
+                    return ['id_guru' => $g['id_guru'], 'nama_guru' => $g['nama_guru']];
+                }, $guruModel->allWithUser());
+            }
+        } catch (Throwable $e) {
+            $gurus = [];
+        }
+
+        $response = $this->view('fingerprint/guru_uid', [
+            'mappings' => $mappings,
+            'gurus' => $gurus,
+            'csrfToken' => ensure_csrf_token(),
+            'alert' => flash('fingerprint_alert'),
+        ], 'Mapping UID Fingerprint');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Fingerprint' => route('fingerprint_devices'),
+            'Mapping UID',
+        ];
+
+        return $response;
+    }
+
+    public function store_uid(): void
+    {
+        $this->requireRole('admin');
+        $this->assertPost();
+
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            flash('fingerprint_alert', 'Token tidak valid. Silakan coba lagi.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids']));
+        }
+
+        $idGuru = (int) ($_POST['id_guru'] ?? 0);
+        $uid = trim($_POST['fingerprint_uid'] ?? '');
+        $deviceSerial = trim($_POST['device_serial'] ?? '');
+
+        $errors = [];
+        if ($idGuru <= 0) { $errors[] = 'Guru wajib dipilih.'; }
+        if ($uid === '') { $errors[] = 'UID fingerprint wajib diisi.'; }
+
+        if (!empty($errors)) {
+            flash('fingerprint_alert', implode(' ', $errors), 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids']));
+        }
+
+        try {
+            $stmt = db()->prepare('INSERT INTO guru_fingerprint (id_guru, fingerprint_uid, device_serial, created_at, updated_at) VALUES (:id_guru, :uid, :serial, NOW(), NOW()) ON DUPLICATE KEY UPDATE device_serial = VALUES(device_serial), updated_at = NOW()');
+            $stmt->execute([
+                'id_guru' => $idGuru,
+                'uid' => $uid,
+                'serial' => $deviceSerial !== '' ? $deviceSerial : null,
+            ]);
+            flash('fingerprint_alert', 'Mapping UID berhasil disimpan.', 'success');
+        } catch (Throwable $e) {
+            flash('fingerprint_alert', 'Gagal menyimpan mapping: ' . $e->getMessage(), 'danger');
+        }
+
+        redirect(route('fingerprint_devices', ['action' => 'uids']));
+    }
+
+    public function delete_uid(): void
+    {
+        $this->requireRole('admin');
+        $this->assertPost();
+
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            flash('fingerprint_alert', 'Token tidak valid.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids']));
+        }
+
+        $idGuru = (int) ($_POST['id_guru'] ?? 0);
+        $uid = trim($_POST['fingerprint_uid'] ?? '');
+
+        if ($idGuru <= 0 || $uid === '') {
+            flash('fingerprint_alert', 'Param tidak valid.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids']));
+        }
+
+        try {
+            $stmt = db()->prepare('DELETE FROM guru_fingerprint WHERE id_guru = :id_guru AND fingerprint_uid = :uid');
+            $stmt->execute(['id_guru' => $idGuru, 'uid' => $uid]);
+            flash('fingerprint_alert', 'Mapping UID dihapus.', 'success');
+        } catch (Throwable $e) {
+            flash('fingerprint_alert', 'Gagal menghapus mapping: ' . $e->getMessage(), 'danger');
+        }
+
+        redirect(route('fingerprint_devices', ['action' => 'uids']));
+    }
+
+    private function fetchGuruUidMappings(): array
+    {
+        try {
+            $sql = 'SELECT gf.*, g.nama_guru FROM guru_fingerprint gf JOIN guru g ON g.id_guru = gf.id_guru ORDER BY g.nama_guru';
+            return db()->query($sql)->fetchAll();
+        } catch (Throwable $e) {
+            // log but do not interrupt flow
+            $logModel = new FingerprintLog();
+            $logModel->create([
+                'action' => 'fetch_guru_uid_mappings.error',
+                'message' => json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                'status' => 'error',
+            ]);
+            return [];
+        }
     }
 }
