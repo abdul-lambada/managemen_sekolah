@@ -17,6 +17,13 @@ class FingerprintController extends Controller
             'update' => $this->update(),
             'delete' => $this->delete(),
             'logs' => $this->buildLogs(),
+            'sync' => $this->sync(),
+            'uids' => $this->uids(),
+            'store_uid' => $this->store_uid(),
+            'delete_uid' => $this->delete_uid(),
+            'uids_siswa' => $this->uids_siswa(),
+            'store_uid_siswa' => $this->store_uid_siswa(),
+            'delete_uid_siswa' => $this->delete_uid_siswa(),
             default => $this->listing(),
         };
     }
@@ -27,9 +34,15 @@ class FingerprintController extends Controller
         $devices = $deviceModel->all();
         $activeCount = $deviceModel->count(['is_active' => 1]);
 
+        // Compute last sync summary from logs (recent 60 minutes)
+        $summary = $this->computeLastSyncSummary(60);
+        $lastSyncMap = $this->computeLastSyncPerDevice($devices, 1440);
+
         $response = $this->view('fingerprint/devices', [
             'devices' => $devices,
             'activeCount' => $activeCount,
+            'lastSyncSummary' => $summary,
+            'lastSyncMap' => $lastSyncMap,
             'csrfToken' => ensure_csrf_token(),
             'alert' => flash('fingerprint_alert'),
         ], 'Perangkat Fingerprint');
@@ -280,5 +293,228 @@ class FingerprintController extends Controller
             http_response_code(405);
             exit('Metode tidak diizinkan');
         }
+    }
+
+    private function sync(): string
+    {
+        $this->requireRole('admin');
+
+        $deviceModel = new FingerprintDevice();
+        $logModel = new FingerprintLog();
+        $devices = $deviceModel->active();
+
+        if (empty($devices)) {
+            flash('fingerprint_alert', 'Tidak ada perangkat aktif untuk disinkronkan.', 'warning');
+            redirect(route('fingerprint_devices'));
+        }
+
+        $totalDevices = count($devices);
+        $connected = 0;
+        $totalPulled = 0;
+        $mappedInserted = 0;
+
+        foreach ($devices as $dev) {
+            $ip = $dev['ip'];
+            $port = (int)($dev['port'] ?? 4370);
+
+            try {
+                $zk = new \ZKLib\ZKLib($ip, $port, 10);
+                if (!$zk->connect()) {
+                    $logModel->create([
+                        'action' => 'attendance.connect',
+                        'message' => json_encode(['ip' => $ip, 'port' => $port, 'error' => 'connect_failed'], JSON_UNESCAPED_UNICODE),
+                        'status' => 'error',
+                    ]);
+                    continue;
+                }
+
+                $connected++;
+                $attendance = $zk->getAttendance();
+                if (is_array($attendance)) {
+                    foreach ($attendance as $rec) {
+                        // Normalize record
+                        $uid = $rec['uid'] ?? ($rec[0] ?? null);
+                        $userid = $rec['id'] ?? ($rec[1] ?? null);
+                        $state = $rec['state'] ?? ($rec[2] ?? null);
+                        $ts = $rec['timestamp'] ?? ($rec[3] ?? null);
+
+                        $totalPulled++;
+                        $logModel->create([
+                            'action' => 'attendance.pull',
+                            'message' => json_encode(['ip' => $ip, 'uid' => $uid, 'userid' => $userid, 'state' => $state, 'timestamp' => $ts], JSON_UNESCAPED_UNICODE),
+                            'status' => 'success',
+                        ]);
+
+                        // Mapping prioritas: fingerprint UID -> guru_fingerprint -> guru.user_id
+                        $mapped = false;
+                        if ($uid !== null) {
+                            $user = $this->resolveUserByFingerprintUid((string)$uid);
+                            if ($user) {
+                                $this->insertKehadiran((int)$user['id'], $user['name'], $ts, (string)($state ?? ''));
+                                $mappedInserted++;
+                                $mapped = true;
+                            }
+                        }
+
+                        // Fallback: userid device cocok dengan users.name
+                        if (!$mapped && $userid !== null) {
+                            $user = $this->resolveUserByDeviceUserId((string)$userid);
+                            if ($user) {
+                                $this->insertKehadiran((int)$user['id'], $user['name'], $ts, (string)($state ?? ''));
+                                $mappedInserted++;
+                            }
+                        }
+                    }
+                }
+
+                // Update last_sync_at for this device after a successful session
+                try {
+                    $stmtUpd = db()->prepare('UPDATE fingerprint_devices SET last_sync_at = NOW() WHERE ip = :ip AND port = :port');
+                    $stmtUpd->execute(['ip' => $ip, 'port' => $port]);
+                } catch (Throwable $e) {
+                    // log but do not interrupt flow
+                    $logModel->create([
+                        'action' => 'attendance.last_sync_update_error',
+                        'message' => json_encode(['ip' => $ip, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                        'status' => 'error',
+                    ]);
+                }
+
+                $zk->disconnect();
+            } catch (Throwable $e) {
+                $logModel->create([
+                    'action' => 'attendance.error',
+                    'message' => json_encode(['ip' => $ip, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE),
+                    'status' => 'error',
+                ]);
+            }
+        }
+
+        flash('fingerprint_alert', sprintf('Sinkronisasi selesai. Device aktif: %d/%d, log ditarik: %d, kehadiran terpetakan: %d', $connected, $totalDevices, $totalPulled, $mappedInserted), 'success');
+        redirect(route('fingerprint_devices'));
+    }
+
+    private function resolveUserByFingerprintUid(string $uid): ?array
+    {
+        // Try guru mapping first
+        $sqlGuru = "SELECT u.*
+                FROM guru_fingerprint gf
+                JOIN guru g ON g.id_guru = gf.id_guru
+                JOIN users u ON u.id = g.user_id
+                WHERE gf.fingerprint_uid = :uid
+                LIMIT 1";
+        $stmt = db()->prepare($sqlGuru);
+        $stmt->execute(['uid' => $uid]);
+        $row = $stmt->fetch();
+        if ($row) { return $row; }
+
+        // Fallback to siswa mapping
+        $sqlSis = "SELECT u.*
+                FROM siswa_fingerprint sf
+                JOIN siswa s ON s.id_siswa = sf.id_siswa
+                JOIN users u ON u.id = s.user_id
+                WHERE sf.fingerprint_uid = :uid
+                LIMIT 1";
+        $stmt = db()->prepare($sqlSis);
+        $stmt->execute(['uid' => $uid]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    private function resolveUserByDeviceUserId(string $userid): ?array
+    {
+        $userModel = new User();
+        return $userModel->findByName($userid);
+    }
+
+    private function insertKehadiran(int $userId, string $userName, ?string $timestamp, string $status): void
+    {
+        $stmt = db()->prepare('INSERT INTO tbl_kehadiran (user_id, user_name, timestamp, status) VALUES (:uid, :name, :ts, :status)');
+        $stmt->execute([
+            'uid' => $userId,
+            'name' => $userName,
+            'ts' => $timestamp ?: date('Y-m-d H:i:s'),
+            'status' => $status,
+        ]);
+    }
+
+    public function uids_siswa(): array
+    {
+        $this->requireRole('admin');
+        $mappings = $this->fetchSiswaUidMappings();
+        $siswaModel = new Siswa();
+        $siswas = $siswaModel->all();
+
+        $response = $this->view('fingerprint/siswa_uid', [
+            'mappings' => $mappings,
+            'siswas' => $siswas,
+            'csrfToken' => ensure_csrf_token(),
+            'alert' => flash('fingerprint_alert'),
+        ], 'Mapping UID Fingerprint Siswa');
+
+        $response['breadcrumbs'] = [
+            'Dashboard' => route('dashboard'),
+            'Fingerprint' => route('fingerprint_devices'),
+            'Mapping UID Siswa',
+        ];
+        return $response;
+    }
+
+    public function store_uid_siswa(): void
+    {
+        $this->requireRole('admin');
+        $this->assertPost();
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            flash('fingerprint_alert', 'Token tidak valid. Silakan coba lagi.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+        }
+        $idSiswa = (int)($_POST['id_siswa'] ?? 0);
+        $uid = trim($_POST['fingerprint_uid'] ?? '');
+        $deviceSerial = trim($_POST['device_serial'] ?? '');
+        $errors = [];
+        if ($idSiswa <= 0) { $errors[] = 'Siswa wajib dipilih.'; }
+        if ($uid === '') { $errors[] = 'UID fingerprint wajib diisi.'; }
+        if (!empty($errors)) {
+            flash('fingerprint_alert', implode(' ', $errors), 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+        }
+        $stmt = db()->prepare('INSERT INTO siswa_fingerprint (id_siswa, fingerprint_uid, device_serial, created_at, updated_at) VALUES (:id_siswa, :uid, :serial, NOW(), NOW()) ON DUPLICATE KEY UPDATE device_serial = VALUES(device_serial), updated_at = NOW()');
+        try {
+            $stmt->execute([
+                'id_siswa' => $idSiswa,
+                'uid' => $uid,
+                'serial' => $deviceSerial !== '' ? $deviceSerial : null,
+            ]);
+            flash('fingerprint_alert', 'Mapping UID siswa berhasil disimpan.', 'success');
+        } catch (Throwable $e) {
+            flash('fingerprint_alert', 'Gagal menyimpan mapping siswa: ' . $e->getMessage(), 'danger');
+        }
+        redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+    }
+
+    public function delete_uid_siswa(): void
+    {
+        $this->requireRole('admin');
+        $this->assertPost();
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            flash('fingerprint_alert', 'Token tidak valid.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+        }
+        $idSiswa = (int)($_POST['id_siswa'] ?? 0);
+        $uid = trim($_POST['fingerprint_uid'] ?? '');
+        if ($idSiswa <= 0 || $uid === '') {
+            flash('fingerprint_alert', 'Param tidak valid.', 'danger');
+            redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+        }
+        $stmt = db()->prepare('DELETE FROM siswa_fingerprint WHERE id_siswa = :id_siswa AND fingerprint_uid = :uid');
+        $stmt->execute(['id_siswa' => $idSiswa, 'uid' => $uid]);
+        flash('fingerprint_alert', 'Mapping UID siswa dihapus.', 'success');
+        redirect(route('fingerprint_devices', ['action' => 'uids_siswa']));
+    }
+
+    private function fetchSiswaUidMappings(): array
+    {
+        $sql = 'SELECT sf.*, s.nama_siswa FROM siswa_fingerprint sf JOIN siswa s ON s.id_siswa = sf.id_siswa ORDER BY s.nama_siswa';
+        return db()->query($sql)->fetchAll();
     }
 }

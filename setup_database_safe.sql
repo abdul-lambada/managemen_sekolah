@@ -156,6 +156,7 @@ CREATE TABLE `fingerprint_devices` (
   `nama_lokasi` varchar(100) NOT NULL,
   `keterangan` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
+  `last_sync_at` datetime DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;

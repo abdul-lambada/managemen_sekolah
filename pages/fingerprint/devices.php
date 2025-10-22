@@ -42,11 +42,40 @@
     </div>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Daftar Perangkat</h6>
-            <a href="<?= route('fingerprint_devices', ['action' => 'logs']) ?>" class="btn btn-sm btn-info">
-                <i class="fas fa-clipboard-list"></i> Lihat Log
-            </a>
+        <div class="card-header py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+            <div class="d-flex align-items-center flex-wrap">
+                <h6 class="m-0 font-weight-bold text-primary mr-3">Daftar Perangkat</h6>
+                <?php if (!empty($lastSyncSummary['last_sync_at'])): ?>
+                    <span class="badge badge-light border mr-2">
+                        Last Sync: <?= time_ago($lastSyncSummary['last_sync_at']) ?>
+                    </span>
+                    <span class="badge badge-primary mr-2">
+                        <?= (int)($lastSyncSummary['connected_devices'] ?? 0) ?>/<?= number_format($activeCount ?? 0) ?> device
+                    </span>
+                    <span class="badge badge-info">
+                        <?= number_format((int)($lastSyncSummary['total_logs'] ?? 0)) ?> log
+                    </span>
+                <?php else: ?>
+                    <span class="badge badge-secondary">Belum ada sinkronisasi terbaru</span>
+                <?php endif; ?>
+            </div>
+            <div class="d-flex align-items-center mt-3 mt-md-0">
+                <a href="<?= route('fingerprint_devices', ['action' => 'create']) ?>" class="btn btn-sm btn-primary mr-2">
+                    <i class="fas fa-plus"></i> Tambah Perangkat
+                </a>
+                <a href="<?= route('fingerprint_devices', ['action' => 'sync']) ?>" class="btn btn-sm btn-success mr-2">
+                    <i class="fas fa-sync"></i> Sinkronkan
+                </a>
+                <a href="<?= route('fingerprint_devices', ['action' => 'uids']) ?>" class="btn btn-sm btn-warning mr-2">
+                    <i class="fas fa-id-badge"></i> Mapping UID
+                </a>
+                <a href="<?= route('fingerprint_devices', ['action' => 'uids_siswa']) ?>" class="btn btn-sm btn-warning mr-2">
+                    <i class="fas fa-id-card"></i> Mapping UID Siswa
+                </a>
+                <a href="<?= route('fingerprint_devices', ['action' => 'logs']) ?>" class="btn btn-sm btn-info">
+                    <i class="fas fa-clipboard-list"></i> Lihat Log
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -58,6 +87,7 @@
                             <th>Port</th>
                             <th>Lokasi</th>
                             <th>Status</th>
+                            <th>Terakhir Sinkronisasi</th>
                             <th>Dibuat</th>
                             <th>Aksi</th>
                         </tr>
@@ -73,6 +103,10 @@
                                     <span class="badge badge-<?= $device['is_active'] ? 'success' : 'secondary' ?>">
                                         <?= $device['is_active'] ? 'Aktif' : 'Nonaktif' ?>
                                     </span>
+                                </td>
+                                <td>
+                                    <?php $ls = $device['last_sync_at'] ?? ($lastSyncMap[$device['ip']] ?? null); ?>
+                                    <?= $ls ? indo_datetime($ls) : '-' ?>
                                 </td>
                                 <td><?= indo_datetime($device['created_at'] ?? '') ?></td>
                                 <td>
