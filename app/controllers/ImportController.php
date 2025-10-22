@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 final class ImportController extends Controller
 {
-    private const ALLOWED_TYPES = ['guru', 'siswa', 'kelas'];
+    private const ALLOWED_TYPES = ['guru', 'siswa', 'kelas', 'jadwal'];
 
     private array $typeLabels = [
         'guru' => 'Data Guru',
         'siswa' => 'Data Siswa',
         'kelas' => 'Data Kelas',
+        'jadwal' => 'Jadwal Pelajaran',
     ];
 
     private array $columnInfo = [
         'guru' => [
             ['key' => 'nama_guru', 'label' => 'Nama Guru *'],
             ['key' => 'nip', 'label' => 'NIP *'],
+            ['key' => 'password', 'label' => 'Password (opsional, default NIP)'],
             ['key' => 'jenis_kelamin', 'label' => 'Jenis Kelamin (Laki-laki/Perempuan)'],
             ['key' => 'tanggal_lahir', 'label' => 'Tanggal Lahir (YYYY-MM-DD)'],
             ['key' => 'alamat', 'label' => 'Alamat'],
@@ -25,6 +27,7 @@ final class ImportController extends Controller
             ['key' => 'nama_siswa', 'label' => 'Nama Siswa *'],
             ['key' => 'nisn', 'label' => 'NISN *'],
             ['key' => 'nis', 'label' => 'NIS *'],
+            ['key' => 'password', 'label' => 'Password (opsional, default NISN)'],
             ['key' => 'jenis_kelamin', 'label' => 'Jenis Kelamin (Laki-laki/Perempuan) *'],
             ['key' => 'kelas', 'label' => 'Nama Kelas *'],
             ['key' => 'tanggal_lahir', 'label' => 'Tanggal Lahir (YYYY-MM-DD)'],
@@ -34,6 +37,18 @@ final class ImportController extends Controller
         'kelas' => [
             ['key' => 'nama_kelas', 'label' => 'Nama Kelas *'],
             ['key' => 'jurusan', 'label' => 'Nama Jurusan *'],
+        ],
+        'jadwal' => [
+            ['key' => 'kelas', 'label' => 'Nama Kelas *'],
+            ['key' => 'kode_mapel', 'label' => 'Kode Mapel (atau kosong jika pakai nama mapel)'],
+            ['key' => 'nama_mapel', 'label' => 'Nama Mapel *'],
+            ['key' => 'guru_nip', 'label' => 'NIP Guru (disarankan)'],
+            ['key' => 'guru_nama', 'label' => 'Nama Guru (alternatif jika NIP kosong)'],
+            ['key' => 'hari', 'label' => "Hari (Senin/Selasa/Rabu/Kamis/Jumat/Sabtu) *"],
+            ['key' => 'jam_mulai', 'label' => 'Jam Mulai (HH:MM) *'],
+            ['key' => 'jam_selesai', 'label' => 'Jam Selesai (HH:MM) *'],
+            ['key' => 'ruang', 'label' => 'Ruang (opsional)'],
+            ['key' => 'catatan', 'label' => 'Catatan (opsional)'],
         ],
     ];
 
@@ -57,6 +72,163 @@ final class ImportController extends Controller
         };
     }
 
+    private function mapJadwalRow(array $row, array &$item): void
+    {
+        $kelasNama = trim($row['kelas'] ?? '');
+        if ($kelasNama === '') {
+            $item['errors'][] = 'Nama kelas wajib diisi.';
+        }
+        $kelasId = $kelasNama !== '' ? $this->resolveKelasIdByName($kelasNama) : null;
+        if ($kelasNama !== '' && $kelasId === null) {
+            $item['errors'][] = 'Kelas dengan nama "' . $kelasNama . '" tidak ditemukan.';
+        }
+
+        $kodeMapel = trim($row['kode_mapel'] ?? '');
+        $namaMapel = trim($row['nama_mapel'] ?? '');
+        if ($namaMapel === '') {
+            $item['errors'][] = 'Nama mapel wajib diisi.';
+        }
+        $mapelId = ($kodeMapel !== '' || $namaMapel !== '') ? $this->resolveMapelId($kodeMapel, $namaMapel) : null;
+        if ($namaMapel !== '' && $mapelId === null) {
+            $item['errors'][] = 'Mata pelajaran tidak ditemukan (periksa kode/nama).';
+        }
+
+        $guruNip = trim($row['guru_nip'] ?? '');
+        $guruNama = trim($row['guru_nama'] ?? '');
+        $guruId = ($guruNip !== '' || $guruNama !== '') ? $this->resolveGuruId($guruNip, $guruNama) : null;
+        if ($guruId === null) {
+            $item['errors'][] = 'Guru tidak ditemukan (gunakan NIP atau nama).';
+        }
+
+        $hari = trim($row['hari'] ?? '');
+        $validDays = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+        if (!in_array($hari, $validDays, true)) {
+            $item['errors'][] = 'Hari tidak valid. Gunakan: ' . implode('/', $validDays) . '.';
+        }
+
+        $jamMulai = trim($row['jam_mulai'] ?? '');
+        $jamSelesai = trim($row['jam_selesai'] ?? '');
+        if (!$this->isValidTime($jamMulai)) { $item['errors'][] = 'Jam Mulai tidak valid (HH:MM).'; }
+        if (!$this->isValidTime($jamSelesai)) { $item['errors'][] = 'Jam Selesai tidak valid (HH:MM).'; }
+        if ($this->isValidTime($jamMulai) && $this->isValidTime($jamSelesai) && strtotime($jamMulai) >= strtotime($jamSelesai)) {
+            $item['errors'][] = 'Jam Selesai harus lebih besar dari Jam Mulai.';
+        }
+
+        // Optional fields
+        $ruang = trim($row['ruang'] ?? '');
+        $catatan = trim($row['catatan'] ?? '');
+
+        // Overlap check (only if base fields valid)
+        if (empty($item['errors'])) {
+            $data = [
+                'id_kelas' => $kelasId,
+                'id_mata_pelajaran' => $mapelId,
+                'id_guru' => $guruId,
+                'hari' => $hari,
+                'jam_mulai' => $jamMulai,
+                'jam_selesai' => $jamSelesai,
+                'ruang' => $ruang ?: null,
+                'catatan' => $catatan ?: null,
+            ];
+            if ($this->hasJadwalOverlap($data)) {
+                $item['errors'][] = 'Benturan jadwal (kelas/guru) di hari dan rentang waktu tersebut.';
+            }
+        }
+
+        $item['data'] = [
+            'id_kelas' => $kelasId,
+            'id_mata_pelajaran' => $mapelId,
+            'id_guru' => $guruId,
+            'hari' => $hari,
+            'jam_mulai' => $jamMulai,
+            'jam_selesai' => $jamSelesai,
+            'ruang' => $ruang ?: null,
+            'catatan' => $catatan ?: null,
+        ];
+    }
+
+    private function resolveMapelId(string $kode, string $nama): ?int
+    {
+        if ($kode !== '') {
+            $stmt = db()->prepare('SELECT id_mata_pelajaran FROM mata_pelajaran WHERE kode_mapel = :kode LIMIT 1');
+            $stmt->execute(['kode' => $kode]);
+            $id = $stmt->fetchColumn();
+            if ($id) return (int)$id;
+        }
+        if ($nama !== '') {
+            $stmt = db()->prepare('SELECT id_mata_pelajaran FROM mata_pelajaran WHERE nama_mapel = :nama LIMIT 1');
+            $stmt->execute(['nama' => $nama]);
+            $id = $stmt->fetchColumn();
+            if ($id) return (int)$id;
+        }
+        return null;
+    }
+
+    private function resolveGuruId(string $nip, string $nama): ?int
+    {
+        if ($nip !== '') {
+            $stmt = db()->prepare('SELECT id_guru FROM guru WHERE nip = :nip LIMIT 1');
+            $stmt->execute(['nip' => $nip]);
+            $id = $stmt->fetchColumn();
+            if ($id) return (int)$id;
+        }
+        if ($nama !== '') {
+            $stmt = db()->prepare('SELECT id_guru FROM guru WHERE nama_guru = :nama LIMIT 1');
+            $stmt->execute(['nama' => $nama]);
+            $id = $stmt->fetchColumn();
+            if ($id) return (int)$id;
+        }
+        return null;
+    }
+
+    private function hasJadwalOverlap(array $data, ?int $excludeId = null): bool
+    {
+        $pdo = db();
+        $excludeClause = $excludeId ? 'AND id_jadwal <> :exclude' : '';
+        // kelas overlap
+        $stmt = $pdo->prepare("SELECT COUNT(1) FROM jadwal_pelajaran WHERE hari = :hari AND id_kelas = :kelas {$excludeClause} AND jam_mulai < :end AND :start < jam_selesai");
+        $stmt->execute([
+            'hari' => $data['hari'],
+            'kelas' => (int)$data['id_kelas'],
+            'start' => $data['jam_mulai'],
+            'end' => $data['jam_selesai'],
+            ...( $excludeId ? ['exclude' => (int)$excludeId] : [] ),
+        ]);
+        if ((int)$stmt->fetchColumn() > 0) return true;
+        // guru overlap
+        $stmt = $pdo->prepare("SELECT COUNT(1) FROM jadwal_pelajaran WHERE hari = :hari AND id_guru = :guru {$excludeClause} AND jam_mulai < :end AND :start < jam_selesai");
+        $stmt->execute([
+            'hari' => $data['hari'],
+            'guru' => (int)$data['id_guru'],
+            'start' => $data['jam_mulai'],
+            'end' => $data['jam_selesai'],
+            ...( $excludeId ? ['exclude' => (int)$excludeId] : [] ),
+        ]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    private function insertJadwal(array $data): void
+    {
+        $model = new Jadwal();
+        $model->create([
+            'id_kelas' => $data['id_kelas'],
+            'id_mata_pelajaran' => $data['id_mata_pelajaran'],
+            'id_guru' => $data['id_guru'],
+            'hari' => $data['hari'],
+            'jam_mulai' => $data['jam_mulai'],
+            'jam_selesai' => $data['jam_selesai'],
+            'ruang' => $data['ruang'],
+            'catatan' => $data['catatan'],
+        ]);
+    }
+
+    private function isValidTime(?string $time): bool
+    {
+        if (!$time) { return false; }
+        $dt = DateTime::createFromFormat('H:i', $time);
+        return $dt !== false && $dt->format('H:i') === $time;
+    }
+
     private function downloadTemplate(): void
     {
         $this->requireRole('admin');
@@ -70,16 +242,20 @@ final class ImportController extends Controller
 
         $templates = [
             'guru' => [
-                'headers' => ['nama_guru', 'nip', 'jenis_kelamin', 'tanggal_lahir', 'alamat', 'phone'],
-                'row' => ['Budi Santoso', '197812312005011001', 'Laki-laki', '1980-01-05', 'Jl. Melati No. 10', '081234567890'],
+                'headers' => ['nama_guru', 'nip', 'password', 'jenis_kelamin', 'tanggal_lahir', 'alamat', 'phone'],
+                'row' => ['Budi Santoso', '197812312005011001', 'password123', 'Laki-laki', '1980-01-05', 'Jl. Melati No. 10', '081234567890'],
             ],
             'siswa' => [
-                'headers' => ['nama_siswa', 'nisn', 'nis', 'jenis_kelamin', 'kelas', 'tanggal_lahir', 'alamat', 'phone'],
-                'row' => ['Ani Wijaya', '0065432101', '2024-07', 'Perempuan', 'XII IPA 1', '2007-04-12', 'Jl. Kenanga No. 5', '082198765432'],
+                'headers' => ['nama_siswa', 'nisn', 'nis', 'password', 'jenis_kelamin', 'kelas', 'tanggal_lahir', 'alamat', 'phone'],
+                'row' => ['Ani Wijaya', '0065432101', '2024-07', 'pwdAni!', 'Perempuan', 'XII IPA 1', '2007-04-12', 'Jl. Kenanga No. 5', '082198765432'],
             ],
             'kelas' => [
                 'headers' => ['nama_kelas', 'jurusan'],
                 'row' => ['XII IPA 1', 'Ilmu Pengetahuan Alam'],
+            ],
+            'jadwal' => [
+                'headers' => ['kelas', 'kode_mapel', 'nama_mapel', 'guru_nip', 'guru_nama', 'hari', 'jam_mulai', 'jam_selesai', 'ruang', 'catatan'],
+                'row' => ['XII IPA 1', 'MAT101', 'Matematika', '197812312005011001', 'Budi Santoso', 'Senin', '07:00', '08:40', 'R-101', 'Pertemuan awal'],
             ],
         ];
 
@@ -265,6 +441,14 @@ final class ImportController extends Controller
                         }
                         $this->insertKelas($row['data']);
                         break;
+                    case 'jadwal':
+                        // Skip if overlap exists for kelas/guru at same day/time
+                        if ($this->hasJadwalOverlap($row['data'])) {
+                            $duplicates++; // treat as duplicate/skip
+                            continue 2;
+                        }
+                        $this->insertJadwal($row['data']);
+                        break;
                 }
 
                 $inserted++;
@@ -311,6 +495,9 @@ final class ImportController extends Controller
                 case 'kelas':
                     $this->mapKelasRow($row, $item, $seenKeys);
                     break;
+                case 'jadwal':
+                    $this->mapJadwalRow($row, $item);
+                    break;
             }
 
             $processed[] = $item;
@@ -323,6 +510,7 @@ final class ImportController extends Controller
     {
         $nama = trim($row['nama_guru'] ?? '');
         $nip = trim($row['nip'] ?? '');
+        $password = (string) ($row['password'] ?? '');
 
         if ($nama === '') {
             $item['errors'][] = 'Nama guru wajib diisi.';
@@ -356,6 +544,7 @@ final class ImportController extends Controller
             'tanggal_lahir' => $birthDate,
             'alamat' => trim($row['alamat'] ?? ''),
             'phone' => $this->sanitizePhone($row['phone'] ?? null),
+            'password' => $password !== '' ? $password : $nip,
         ];
     }
 
@@ -364,6 +553,7 @@ final class ImportController extends Controller
         $nama = trim($row['nama_siswa'] ?? '');
         $nisn = trim($row['nisn'] ?? '');
         $nis = trim($row['nis'] ?? '');
+        $password = (string) ($row['password'] ?? '');
 
         if ($nama === '') {
             $item['errors'][] = 'Nama siswa wajib diisi.';
@@ -413,6 +603,7 @@ final class ImportController extends Controller
             'phone' => $this->sanitizePhone($row['phone'] ?? null),
             'id_kelas' => $kelasId,
             'kelas_nama' => $kelasNama,
+            'password' => $password !== '' ? $password : $nisn,
         ];
     }
 
@@ -566,6 +757,9 @@ final class ImportController extends Controller
 
     private function insertGuru(array $data): void
     {
+        // create or reuse user by name (use NIP as username)
+        $userId = $this->createOrGetUser($data['nip'], 'guru', (string) $data['password'], $data['phone']);
+
         $model = new Guru();
         $model->create([
             'nama_guru' => $data['nama_guru'],
@@ -574,11 +768,15 @@ final class ImportController extends Controller
             'tanggal_lahir' => $data['tanggal_lahir'],
             'alamat' => $data['alamat'],
             'phone' => $data['phone'],
+            'user_id' => $userId,
         ]);
     }
 
     private function insertSiswa(array $data): void
     {
+        // create or reuse user by name (use NISN as username)
+        $userId = $this->createOrGetUser($data['nisn'], 'siswa', (string) $data['password'], $data['phone']);
+
         $model = new Siswa();
         $model->create([
             'nama_siswa' => $data['nama_siswa'],
@@ -589,7 +787,30 @@ final class ImportController extends Controller
             'alamat' => $data['alamat'],
             'id_kelas' => $data['id_kelas'],
             'phone' => $data['phone'],
+            'user_id' => $userId,
         ]);
+    }
+
+    private function createOrGetUser(string $username, string $role, string $passwordPlain, ?string $phone = null): int
+    {
+        $userModel = new User();
+        $existing = $userModel->findByName($username);
+        if ($existing) {
+            return (int) $existing['id'];
+        }
+
+        $hashed = password_hash($passwordPlain !== '' ? $passwordPlain : $username, PASSWORD_BCRYPT);
+        // Use base Model::create
+        /** @var Model $userModel */
+        $userModel->create([
+            'name' => $username,
+            'phone' => $phone,
+            'password' => $hashed,
+            'role' => $role,
+        ]);
+
+        $created = $userModel->findByName($username);
+        return (int) ($created['id'] ?? 0);
     }
 
     private function insertKelas(array $data): void
