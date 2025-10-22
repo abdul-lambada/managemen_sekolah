@@ -12,6 +12,13 @@
         <h1 class="h3 mb-0 text-gray-800">Automasi</h1>
     </div>
 
+    <style>
+        .automation-card-pre { white-space: pre-wrap; word-break: break-word; overflow: auto; max-height: 240px; }
+        .automation-devices { max-height: 240px; overflow: auto; }
+        .automation-details pre { white-space: pre-wrap; word-break: break-word; overflow: auto; max-height: 280px; }
+        .automation-note { word-break: break-word; }
+    </style>
+
     <div class="row">
         <?php foreach ([
             'whatsapp' => ['title' => 'Dispatch WhatsApp', 'icon' => 'fa-paper-plane', 'action' => 'whatsapp'],
@@ -54,7 +61,7 @@
                                         </div>
 
                                         <?php if (!empty($m['devices']) && is_array($m['devices'])): ?>
-                                            <div class="table-responsive">
+                                            <div class="table-responsive automation-devices">
                                                 <table class="table table-sm table-bordered mb-2">
                                                     <thead class="thead-light">
                                                         <tr>
@@ -79,7 +86,7 @@
                                                                 <td><?= (int)($d['daily_processed'] ?? 0) ?></td>
                                                                 <td><?= (int)($d['student_daily_processed'] ?? 0) ?></td>
                                                                 <td><?= (int)($d['schedule_processed'] ?? 0) ?></td>
-                                                                <td class="text-truncate" style="max-width:220px;" title="<?= sanitize($d['message'] ?? '') ?>">
+                                                                <td class="text-truncate automation-note" style="max-width:220px;" title="<?= sanitize($d['message'] ?? '') ?>">
                                                                     <?= sanitize($d['message'] ?? '') ?>
                                                                 </td>
                                                             </tr>
@@ -89,12 +96,12 @@
                                             </div>
                                         <?php endif; ?>
 
-                                        <details class="small">
+                                        <details class="small automation-details">
                                             <summary>Lihat detail mentah</summary>
-                                            <pre class="small bg-light p-2 rounded border mb-0"><?= sanitize(json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                            <pre class="small bg-light p-2 rounded border mb-0 automation-card-pre"><?= sanitize(json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
                                         </details>
                                     <?php else: ?>
-                                        <pre class="small bg-light p-2 rounded border"><?= sanitize(json_encode($log['meta'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                        <pre class="small bg-light p-2 rounded border automation-card-pre"><?= sanitize(json_encode($log['meta'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </div>
