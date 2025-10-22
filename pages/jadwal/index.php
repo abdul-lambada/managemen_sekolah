@@ -10,7 +10,14 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
-            <h6 class="m-0 font-weight-bold text-primary">Jadwal Pelajaran</h6>
+            <div class="d-flex align-items-center mb-2 mb-lg-0">
+                <h6 class="m-0 font-weight-bold text-primary mr-2">Jadwal Pelajaran</h6>
+                <?php if (has_role('admin')): ?>
+                    <a href="<?= route('jadwal', ['action' => 'create']) ?>" class="btn btn-sm btn-primary ml-1">
+                        <i class="fas fa-plus"></i> Tambah Jadwal
+                    </a>
+                <?php endif; ?>
+            </div>
             <form class="form-inline mt-3 mt-lg-0" method="GET" action="<?= route('jadwal') ?>">
                 <input type="hidden" name="page" value="jadwal">
 

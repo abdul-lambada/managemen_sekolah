@@ -173,6 +173,14 @@ final class JadwalController extends Controller
             redirect(route('jadwal', ['action' => 'create']));
         }
 
+        // Overlap validation (kelas & guru, hari yang sama)
+        $overlapErrors = $this->validateOverlap($data);
+        if (!empty($overlapErrors)) {
+            $_SESSION['jadwal_form_data'] = $data;
+            $_SESSION['jadwal_errors'] = array_merge($errors, $overlapErrors);
+            redirect(route('jadwal', ['action' => 'create']));
+        }
+
         try {
             $model = new Jadwal();
             $model->create($this->mapToDb($data));
@@ -208,6 +216,14 @@ final class JadwalController extends Controller
         if (!empty($errors)) {
             $_SESSION['jadwal_form_data'] = $data;
             $_SESSION['jadwal_errors'] = $errors;
+            redirect(route('jadwal', ['action' => 'edit', 'id' => $id]));
+        }
+
+        // Overlap validation (exclude current id)
+        $overlapErrors = $this->validateOverlap($data, $id);
+        if (!empty($overlapErrors)) {
+            $_SESSION['jadwal_form_data'] = $data;
+            $_SESSION['jadwal_errors'] = array_merge($errors, $overlapErrors);
             redirect(route('jadwal', ['action' => 'edit', 'id' => $id]));
         }
 
@@ -352,6 +368,57 @@ final class JadwalController extends Controller
 
         $dt = DateTime::createFromFormat('H:i', $time);
         return $dt !== false && $dt->format('H:i') === $time;
+    }
+
+    private function validateOverlap(array $data, ?int $excludeId = null): array
+    {
+        $errors = [];
+        // Only run when base validation passed for required fields
+        if ($data['id_kelas'] <= 0 || $data['id_guru'] <= 0 || !$this->isValidTime($data['jam_mulai']) || !$this->isValidTime($data['jam_selesai']) || !in_array($data['hari'], $this->dayOptions(), true)) {
+            return $errors;
+        }
+
+        $pdo = db();
+        $range = [
+            'hari' => $data['hari'],
+            'start' => $data['jam_mulai'],
+            'end' => $data['jam_selesai'],
+        ];
+        $excludeClause = $excludeId ? 'AND j.id_jadwal <> :exclude' : '';
+
+        // 1) Overlap pada kelas yang sama di hari yang sama
+        $sqlKelas = "SELECT COUNT(1) FROM jadwal_pelajaran j
+                      WHERE j.hari = :hari AND j.id_kelas = :kelas
+                        {$excludeClause}
+                        AND j.jam_mulai < :end AND :start < j.jam_selesai";
+        $stmt = $pdo->prepare($sqlKelas);
+        $stmt->bindValue(':hari', $range['hari']);
+        $stmt->bindValue(':kelas', (int)$data['id_kelas'], PDO::PARAM_INT);
+        $stmt->bindValue(':start', $range['start']);
+        $stmt->bindValue(':end', $range['end']);
+        if ($excludeId) { $stmt->bindValue(':exclude', (int)$excludeId, PDO::PARAM_INT); }
+        $stmt->execute();
+        if ((int)$stmt->fetchColumn() > 0) {
+            $errors[] = 'Benturan jadwal pada Kelas yang sama di hari dan rentang waktu tersebut.';
+        }
+
+        // 2) Overlap pada guru yang sama di hari yang sama
+        $sqlGuru = "SELECT COUNT(1) FROM jadwal_pelajaran j
+                    WHERE j.hari = :hari AND j.id_guru = :guru
+                      {$excludeClause}
+                      AND j.jam_mulai < :end AND :start < j.jam_selesai";
+        $stmt = $pdo->prepare($sqlGuru);
+        $stmt->bindValue(':hari', $range['hari']);
+        $stmt->bindValue(':guru', (int)$data['id_guru'], PDO::PARAM_INT);
+        $stmt->bindValue(':start', $range['start']);
+        $stmt->bindValue(':end', $range['end']);
+        if ($excludeId) { $stmt->bindValue(':exclude', (int)$excludeId, PDO::PARAM_INT); }
+        $stmt->execute();
+        if ((int)$stmt->fetchColumn() > 0) {
+            $errors[] = 'Benturan jadwal pada Guru yang sama di hari dan rentang waktu tersebut.';
+        }
+
+        return $errors;
     }
 
     private function isValidDate(?string $date): bool
