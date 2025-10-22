@@ -9,72 +9,80 @@
     <?php endif; ?>
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
-            <div class="d-flex align-items-center mb-2 mb-lg-0">
-                <h6 class="m-0 font-weight-bold text-primary mr-2">Jadwal Pelajaran</h6>
-                <?php if (has_role('admin')): ?>
-                    <a href="<?= route('jadwal', ['action' => 'create']) ?>" class="btn btn-sm btn-primary ml-1">
-                        <i class="fas fa-plus"></i> Tambah Jadwal
-                    </a>
-                <?php endif; ?>
+        <div class="card-header py-3">
+            <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center justify-content-lg-between">
+                <div class="d-flex align-items-center mb-3 mb-lg-0">
+                    <h6 class="m-0 font-weight-bold text-primary mr-2">Jadwal Pelajaran</h6>
+                    <?php if (has_role('admin')): ?>
+                        <a href="<?= route('jadwal', ['action' => 'create']) ?>" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i> Tambah Jadwal
+                        </a>
+                    <?php endif; ?>
+                </div>
+
+                <form class="w-100" method="GET" action="<?= route('jadwal') ?>">
+                    <input type="hidden" name="page" value="jadwal">
+                    <div class="form-row">
+                        <div class="form-group col-12 col-md-6 col-lg-3">
+                            <label for="filterKelas" class="small text-muted">Kelas</label>
+                            <select class="form-control" id="filterKelas" name="kelas">
+                                <option value="">Semua</option>
+                                <?php foreach ($kelasOptions as $kelas): ?>
+                                    <?php $kelasId = (int) $kelas['id_kelas']; ?>
+                                    <option value="<?= $kelasId ?>" <?= ($filters['kelas'] ?? null) === $kelasId ? 'selected' : '' ?>>
+                                        <?= sanitize(($kelas['nama_jurusan'] ?? '') . ' - ' . $kelas['nama_kelas']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-12 col-md-6 col-lg-3">
+                            <label for="filterGuru" class="small text-muted">Guru</label>
+                            <select class="form-control" id="filterGuru" name="guru">
+                                <option value="">Semua</option>
+                                <?php foreach ($guruOptions as $guru): ?>
+                                    <?php $guruId = (int) $guru['id_guru']; ?>
+                                    <option value="<?= $guruId ?>" <?= ($filters['guru'] ?? null) === $guruId ? 'selected' : '' ?>>
+                                        <?= sanitize($guru['nama_guru']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-12 col-md-6 col-lg-3">
+                            <label for="filterMapel" class="small text-muted">Mapel</label>
+                            <select class="form-control" id="filterMapel" name="mapel">
+                                <option value="">Semua</option>
+                                <?php foreach ($mapelOptions as $mapel): ?>
+                                    <?php $mapelId = (int) $mapel['id_mata_pelajaran']; ?>
+                                    <option value="<?= $mapelId ?>" <?= ($filters['mapel'] ?? null) === $mapelId ? 'selected' : '' ?>>
+                                        <?= sanitize(($mapel['kode_mapel'] ?? '') . ' - ' . $mapel['nama_mapel']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-12 col-md-6 col-lg-2">
+                            <label for="filterHari" class="small text-muted">Hari</label>
+                            <select class="form-control" id="filterHari" name="hari">
+                                <option value="">Semua</option>
+                                <?php foreach ($hariOptions as $hari): ?>
+                                    <option value="<?= sanitize($hari) ?>" <?= ($filters['hari'] ?? null) === $hari ? 'selected' : '' ?>>
+                                        <?= sanitize($hari) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-12 col-lg-1 d-flex align-items-end">
+                            <div class="w-100">
+                                <button type="submit" class="btn btn-primary btn-block mb-2 mb-lg-0">Filter</button>
+                            </div>
+                        </div>
+                        <div class="form-group col-12 col-lg-1 d-flex align-items-end">
+                            <div class="w-100">
+                                <a href="<?= route('jadwal') ?>" class="btn btn-light btn-block">Reset</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <form class="form-inline mt-3 mt-lg-0" method="GET" action="<?= route('jadwal') ?>">
-                <input type="hidden" name="page" value="jadwal">
-
-                <div class="form-group mr-2">
-                    <label for="filterKelas" class="mr-2">Kelas</label>
-                    <select class="form-control" id="filterKelas" name="kelas">
-                        <option value="">Semua</option>
-                        <?php foreach ($kelasOptions as $kelas): ?>
-                            <?php $kelasId = (int) $kelas['id_kelas']; ?>
-                            <option value="<?= $kelasId ?>" <?= ($filters['kelas'] ?? null) === $kelasId ? 'selected' : '' ?>>
-                                <?= sanitize(($kelas['nama_jurusan'] ?? '') . ' - ' . $kelas['nama_kelas']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group mr-2">
-                    <label for="filterGuru" class="mr-2">Guru</label>
-                    <select class="form-control" id="filterGuru" name="guru">
-                        <option value="">Semua</option>
-                        <?php foreach ($guruOptions as $guru): ?>
-                            <?php $guruId = (int) $guru['id_guru']; ?>
-                            <option value="<?= $guruId ?>" <?= ($filters['guru'] ?? null) === $guruId ? 'selected' : '' ?>>
-                                <?= sanitize($guru['nama_guru']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group mr-2">
-                    <label for="filterMapel" class="mr-2">Mapel</label>
-                    <select class="form-control" id="filterMapel" name="mapel">
-                        <option value="">Semua</option>
-                        <?php foreach ($mapelOptions as $mapel): ?>
-                            <?php $mapelId = (int) $mapel['id_mata_pelajaran']; ?>
-                            <option value="<?= $mapelId ?>" <?= ($filters['mapel'] ?? null) === $mapelId ? 'selected' : '' ?>>
-                                <?= sanitize(($mapel['kode_mapel'] ?? '') . ' - ' . $mapel['nama_mapel']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group mr-2">
-                    <label for="filterHari" class="mr-2">Hari</label>
-                    <select class="form-control" id="filterHari" name="hari">
-                        <option value="">Semua</option>
-                        <?php foreach ($hariOptions as $hari): ?>
-                            <option value="<?= sanitize($hari) ?>" <?= ($filters['hari'] ?? null) === $hari ? 'selected' : '' ?>>
-                                <?= sanitize($hari) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary mr-2">Filter</button>
-                <a href="<?= route('jadwal') ?>" class="btn btn-light">Reset</a>
-            </form>
         </div>
         <div class="card-body">
             <div class="table-responsive">
