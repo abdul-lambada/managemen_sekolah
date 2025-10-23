@@ -140,8 +140,8 @@ class AutomationController extends Controller
 
     private function resolvePhpBinary(): string
     {
-        // 1) Allow override via constant from config/app.php
-        if (defined('PHP_CLI_BIN') && is_string(PHP_CLI_BIN) && is_file(PHP_CLI_BIN)) {
+        // 1) Allow override via constant from config/app.php (trust user-provided path)
+        if (defined('PHP_CLI_BIN') && is_string(PHP_CLI_BIN) && PHP_CLI_BIN !== '') {
             return PHP_CLI_BIN;
         }
 
@@ -172,8 +172,17 @@ class AutomationController extends Controller
             '/usr/local/bin/php',
         ];
 
+        // Respect open_basedir: only check within allowed prefixes
+        $allowed = array_filter(array_map('trim', explode(PATH_SEPARATOR, (string)ini_get('open_basedir') ?: '')));
+        $isAllowed = function(string $p) use ($allowed): bool {
+            if (empty($allowed)) return true;
+            foreach ($allowed as $base) { if ($base !== '' && strpos($p, rtrim($base, '/')) === 0) return true; }
+            return false;
+        };
+
         foreach ($candidates as $bin) {
-            if (is_file($bin) && is_executable($bin)) {
+            if (!$isAllowed($bin)) { continue; }
+            if (@is_file($bin) && @is_executable($bin)) {
                 return $bin;
             }
         }
