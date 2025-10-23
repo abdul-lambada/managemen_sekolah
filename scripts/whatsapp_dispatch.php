@@ -194,20 +194,23 @@ function sendFonnteRequest(string $apiUrl, string $apiKey, array $payload): arra
  */
 function updateLog(PDO $pdo, int $id, string $status, ?string $messageId, ?string $response): void
 {
-    $set = 'status = :status, message_id = :message_id, response = :response, retry_count = CASE WHEN :is_success = 1 THEN retry_count ELSE retry_count + 1 END';
+    $set = 'status = :status, message_id = :message_id, response = :response, '
+         . 'retry_count = CASE WHEN :is_success_retry = 1 THEN retry_count ELSE retry_count + 1 END';
     if (columnExists($pdo, 'whatsapp_logs', 'sent_at')) {
-        $set .= ', sent_at = CASE WHEN :is_success = 1 THEN NOW() ELSE sent_at END';
+        $set .= ', sent_at = CASE WHEN :is_success_sent = 1 THEN NOW() ELSE sent_at END';
     }
     if (columnExists($pdo, 'whatsapp_logs', 'updated_at')) {
         $set .= ', updated_at = NOW()';
     }
     $sql = 'UPDATE whatsapp_logs SET ' . $set . ' WHERE id = :id';
     $stmt = $pdo->prepare($sql);
+    $isSuccess = $status === 'success' ? 1 : 0;
     $stmt->execute([
         'status' => $status,
         'message_id' => $messageId,
         'response' => $response,
-        'is_success' => $status === 'success' ? 1 : 0,
+        'is_success_retry' => $isSuccess,
+        'is_success_sent' => $isSuccess,
         'id' => $id,
     ]);
 }
