@@ -22,6 +22,13 @@ function out(string $message): void
     echo $message;
 }
 
+function columnExists(PDO $pdo, string $table, string $column): bool
+{
+    $stmt = $pdo->prepare('SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c');
+    $stmt->execute(['t' => $table, 'c' => $column]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function err(string $message): void
 {
     if (PHP_SAPI === 'cli') {
@@ -187,7 +194,15 @@ function sendFonnteRequest(string $apiUrl, string $apiKey, array $payload): arra
  */
 function updateLog(PDO $pdo, int $id, string $status, ?string $messageId, ?string $response): void
 {
-    $stmt = $pdo->prepare('UPDATE whatsapp_logs SET status = :status, message_id = :message_id, response = :response, retry_count = CASE WHEN :is_success = 1 THEN retry_count ELSE retry_count + 1 END, sent_at = CASE WHEN :is_success = 1 THEN NOW() ELSE sent_at END, updated_at = NOW() WHERE id = :id');
+    $set = 'status = :status, message_id = :message_id, response = :response, retry_count = CASE WHEN :is_success = 1 THEN retry_count ELSE retry_count + 1 END';
+    if (columnExists($pdo, 'whatsapp_logs', 'sent_at')) {
+        $set .= ', sent_at = CASE WHEN :is_success = 1 THEN NOW() ELSE sent_at END';
+    }
+    if (columnExists($pdo, 'whatsapp_logs', 'updated_at')) {
+        $set .= ', updated_at = NOW()';
+    }
+    $sql = 'UPDATE whatsapp_logs SET ' . $set . ' WHERE id = :id';
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'status' => $status,
         'message_id' => $messageId,
@@ -199,10 +214,12 @@ function updateLog(PDO $pdo, int $id, string $status, ?string $messageId, ?strin
 
 function markAutomationLog(PDO $pdo, int $logId, bool $success, ?string $error): void
 {
-    $stmt = $pdo->prepare(
-        'UPDATE whatsapp_automation_logs SET message_sent = :sent, error_message = :error, updated_at = NOW()
-         WHERE whatsapp_log_id = :log_id'
-    );
+    $set = 'message_sent = :sent, error_message = :error';
+    if (columnExists($pdo, 'whatsapp_automation_logs', 'updated_at')) {
+        $set .= ', updated_at = NOW()';
+    }
+    $sql = 'UPDATE whatsapp_automation_logs SET ' . $set . ' WHERE whatsapp_log_id = :log_id';
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'sent' => $success ? 1 : 0,
         'error' => $error,
