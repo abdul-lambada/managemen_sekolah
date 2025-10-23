@@ -33,7 +33,8 @@ class AutomationController extends Controller
         $action = $_POST['action'] ?? '';
         $cmd = null;
 
-        $phpBinaryPath = $this->resolvePhpBinary();
+        // Use configured PHP CLI path directly to avoid open_basedir checks
+        $phpBinaryPath = (defined('PHP_CLI_BIN') && is_string(PHP_CLI_BIN) && PHP_CLI_BIN !== '') ? PHP_CLI_BIN : PHP_BINARY;
         $phpBinary = escapeshellarg($phpBinaryPath);
 
         if ($action === 'whatsapp') {
