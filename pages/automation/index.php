@@ -110,10 +110,10 @@
                                 <?php endif; ?>
                             </div>
                             <div>
-                                <form method="POST" action="<?= route('automation_trigger') ?>" onsubmit="return confirm('Jalankan <?= sanitize($config['title']) ?> sekarang?');">
+                                <form id="form-<?= sanitize($key) ?>" class="automation-run-form" method="POST" action="<?= route('automation_trigger') ?>">
                                     <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                     <input type="hidden" name="action" value="<?= sanitize($config['action']) ?>">
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#confirmRunModal" data-form="form-<?= sanitize($key) ?>" data-title="<?= sanitize($config['title']) ?>">
                                         <i class="fas fa-play"></i> Jalankan
                                     </button>
                                 </form>
@@ -124,4 +124,36 @@
             </div>
         <?php endforeach; ?>
     </div>
+    <div class="modal fade" id="confirmRunModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmRunModalLabel">Konfirmasi</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="confirmRunModalMessage">Apakah Anda yakin?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="confirmRunModalConfirm">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var targetForm = null;
+        $('#confirmRunModal').on('show.bs.modal', function (e) {
+            var btn = $(e.relatedTarget);
+            var formId = btn.data('form');
+            targetForm = document.getElementById(formId);
+            var title = btn.data('title');
+            $('#confirmRunModalMessage').text('Jalankan ' + title + ' sekarang?');
+        });
+        $('#confirmRunModalConfirm').on('click', function(){
+            if (targetForm) targetForm.submit();
+        });
+    })();
+    </script>
 </div>
