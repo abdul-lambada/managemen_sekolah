@@ -113,7 +113,7 @@
                                 <form id="form-<?= sanitize($key) ?>" class="automation-run-form" method="POST" action="<?= route('automation_trigger') ?>">
                                     <input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>">
                                     <input type="hidden" name="action" value="<?= sanitize($config['action']) ?>">
-                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#confirmRunModal" data-form="form-<?= sanitize($key) ?>" data-title="<?= sanitize($config['title']) ?>">
+                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#confirmRunModal" data-bs-toggle="modal" data-bs-target="#confirmRunModal" data-form="form-<?= sanitize($key) ?>" data-title="<?= sanitize($config['title']) ?>">
                                         <i class="fas fa-play"></i> Jalankan
                                     </button>
                                 </form>
@@ -143,17 +143,45 @@
     </div>
     <script>
     (function(){
-        var targetForm = null;
-        $('#confirmRunModal').on('show.bs.modal', function (e) {
-            var btn = $(e.relatedTarget);
-            var formId = btn.data('form');
-            targetForm = document.getElementById(formId);
-            var title = btn.data('title');
-            $('#confirmRunModalMessage').text('Jalankan ' + title + ' sekarang?');
-        });
-        $('#confirmRunModalConfirm').on('click', function(){
-            if (targetForm) targetForm.submit();
-        });
+        var targetFormId = null;
+        var $modal = $('#confirmRunModal');
+        var $msg = $('#confirmRunModalMessage');
+        var $confirm = $('#confirmRunModalConfirm');
+
+        if ($modal.length && typeof $modal.on === 'function') {
+            // Bootstrap 4 (SB Admin 2) with jQuery
+            $modal.on('show.bs.modal', function (e) {
+                var btn = $(e.relatedTarget);
+                targetFormId = btn && btn.data('form');
+                var title = btn && btn.data('title');
+                if ($msg.length) { $msg.text('Jalankan ' + (title || '') + ' sekarang?'); }
+            });
+            $confirm.on('click', function(){
+                if (!targetFormId) return;
+                var form = document.getElementById(targetFormId);
+                if (form) { $modal.modal('hide'); form.submit(); }
+            });
+        } else {
+            // Fallback vanilla (Bootstrap 5 without jQuery)
+            var modalEl = document.getElementById('confirmRunModal');
+            var msgEl = document.getElementById('confirmRunModalMessage');
+            var confirmEl = document.getElementById('confirmRunModalConfirm');
+            if (modalEl) {
+                modalEl.addEventListener('show.bs.modal', function (event) {
+                    var btn = event.relatedTarget;
+                    targetFormId = btn && btn.getAttribute('data-form');
+                    var title = btn && btn.getAttribute('data-title');
+                    if (msgEl) { msgEl.textContent = 'Jalankan ' + (title || '') + ' sekarang?'; }
+                });
+            }
+            if (confirmEl) {
+                confirmEl.addEventListener('click', function(){
+                    if (!targetFormId) return;
+                    var form = document.getElementById(targetFormId);
+                    if (form) form.submit();
+                });
+            }
+        }
     })();
     </script>
 </div>
