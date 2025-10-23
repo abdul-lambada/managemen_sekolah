@@ -140,54 +140,18 @@ class AutomationController extends Controller
 
     private function resolvePhpBinary(): string
     {
-        // 1) Allow override via constant from config/app.php (trust user-provided path)
+        // 1) If PHP_CLI_BIN is configured, always use it (avoid any filesystem checks to prevent open_basedir warnings)
         if (defined('PHP_CLI_BIN') && is_string(PHP_CLI_BIN) && PHP_CLI_BIN !== '') {
             return PHP_CLI_BIN;
         }
 
-        // 2) Windows default
+        // 2) Windows: prefer PHP_BINDIR/php.exe, else typical XAMPP path. Avoid is_file checks to prevent warnings.
         if (PHP_OS_FAMILY === 'Windows') {
             $candidate = rtrim(PHP_BINDIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php.exe';
-            if (is_file($candidate)) {
-                return $candidate;
-            }
-            return 'C:\\xampp\\php\\php.exe';
+            return $candidate ?: 'C:\\xampp\\php\\php.exe';
         }
 
-        // 3) Common hosting paths, prefer PHP 8.1+ (Plesk/cPanel)
-        $candidates = [
-            '/opt/plesk/php/8.3/bin/php',
-            '/opt/plesk/php/8.2/bin/php',
-            '/opt/plesk/php/8.1/bin/php',
-            '/opt/cpanel/ea-php83/root/usr/bin/php',
-            '/opt/cpanel/ea-php82/root/usr/bin/php',
-            '/opt/cpanel/ea-php81/root/usr/bin/php',
-            '/usr/bin/php8.3',
-            '/usr/bin/php8.2',
-            '/usr/bin/php8.1',
-            '/usr/local/bin/php8.3',
-            '/usr/local/bin/php8.2',
-            '/usr/local/bin/php8.1',
-            '/usr/bin/php',
-            '/usr/local/bin/php',
-        ];
-
-        // Respect open_basedir: only check within allowed prefixes
-        $allowed = array_filter(array_map('trim', explode(PATH_SEPARATOR, (string)ini_get('open_basedir') ?: '')));
-        $isAllowed = function(string $p) use ($allowed): bool {
-            if (empty($allowed)) return true;
-            foreach ($allowed as $base) { if ($base !== '' && strpos($p, rtrim($base, '/')) === 0) return true; }
-            return false;
-        };
-
-        foreach ($candidates as $bin) {
-            if (!$isAllowed($bin)) { continue; }
-            if (@is_file($bin) && @is_executable($bin)) {
-                return $bin;
-            }
-        }
-
-        // 4) Fallback to current binary
+        // 3) Default: current binary (no external path probing to avoid open_basedir issues)
         return PHP_BINARY;
     }
 
