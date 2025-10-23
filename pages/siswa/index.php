@@ -66,8 +66,8 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        $('#dataSiswa').DataTable({
+     document.addEventListener('DOMContentLoaded', () => {
+        $('#dataKelas').DataTable({
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/id.json'
             }
