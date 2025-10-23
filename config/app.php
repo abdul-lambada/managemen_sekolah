@@ -29,6 +29,17 @@ if (!defined('APP_URL')) {
     define('APP_URL', rtrim($config['APP_URL'], '/'));
 }
 
+if (!defined('APP_DEBUG')) {
+    $dbg = $config['APP_DEBUG'] ?? '0';
+    $isDebug = in_array(strtolower((string)$dbg), ['1','true','yes','on'], true);
+    define('APP_DEBUG', $isDebug);
+}
+
+if (APP_DEBUG) {
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+}
+
 if (!defined('PHP_CLI_BIN')) {
     $candidate = $config['PHP_CLI_BIN'] ?? null;
     if (is_string($candidate) && $candidate !== '' && @is_file($candidate)) {

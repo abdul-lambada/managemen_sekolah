@@ -1,3 +1,11 @@
+<?php
+// Guards to avoid undefined variable notices
+$records = is_array($records ?? null) ? $records : [];
+$kelasOptions = is_array($kelasOptions ?? null) ? $kelasOptions : [];
+$start = $start ?? '';
+$end = $end ?? '';
+$kelasId = $kelasId ?? '';
+?>
 <div class="container-fluid">
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex align-items-center justify-content-between">
@@ -82,10 +90,14 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        $('#tableAbsensiSiswaHarian').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/id.json' }
-        });
-        $(function () { $('[data-toggle="tooltip"]').tooltip(); });
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.jQuery && jQuery.fn && typeof jQuery.fn.DataTable === 'function') {
+            jQuery('#tableAbsensiSiswaHarian').DataTable({
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.1/i18n/id.json' }
+            });
+        }
+        if (window.jQuery && jQuery.fn && jQuery.fn.tooltip) {
+            jQuery(function(){ jQuery('[data-toggle="tooltip"]').tooltip(); });
+        }
     });
 </script>
