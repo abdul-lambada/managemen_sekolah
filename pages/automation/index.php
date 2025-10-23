@@ -143,45 +143,37 @@
     </div>
     <script>
     (function(){
-        var targetFormId = null;
-        var $modal = $('#confirmRunModal');
-        var $msg = $('#confirmRunModalMessage');
-        var $confirm = $('#confirmRunModalConfirm');
-
-        if ($modal.length && typeof $modal.on === 'function') {
-            // Bootstrap 4 (SB Admin 2) with jQuery
-            $modal.on('show.bs.modal', function (e) {
-                var btn = $(e.relatedTarget);
-                targetFormId = btn && btn.data('form');
-                var title = btn && btn.data('title');
-                if ($msg.length) { $msg.text('Jalankan ' + (title || '') + ' sekarang?'); }
-            });
-            $confirm.on('click', function(){
-                if (!targetFormId) return;
-                var form = document.getElementById(targetFormId);
-                if (form) { $modal.modal('hide'); form.submit(); }
-            });
-        } else {
-            // Fallback vanilla (Bootstrap 5 without jQuery)
+        document.addEventListener('DOMContentLoaded', function(){
             var modalEl = document.getElementById('confirmRunModal');
             var msgEl = document.getElementById('confirmRunModalMessage');
             var confirmEl = document.getElementById('confirmRunModalConfirm');
-            if (modalEl) {
-                modalEl.addEventListener('show.bs.modal', function (event) {
-                    var btn = event.relatedTarget;
-                    targetFormId = btn && btn.getAttribute('data-form');
-                    var title = btn && btn.getAttribute('data-title');
-                    if (msgEl) { msgEl.textContent = 'Jalankan ' + (title || '') + ' sekarang?'; }
-                });
-            }
+
+            // Delegated click: capture which button opened the modal
+            document.addEventListener('click', function(e){
+                var btn = e.target.closest('[data-form][data-target="#confirmRunModal"], [data-form][data-bs-target="#confirmRunModal"]');
+                if (!btn || !modalEl) return;
+                var formId = btn.getAttribute('data-form');
+                var title = btn.getAttribute('data-title') || '';
+                modalEl.setAttribute('data-form-id', formId || '');
+                if (msgEl) { msgEl.textContent = 'Jalankan ' + title + ' sekarang?'; }
+            }, true);
+
+            // Confirm: submit the captured form
             if (confirmEl) {
                 confirmEl.addEventListener('click', function(){
-                    if (!targetFormId) return;
-                    var form = document.getElementById(targetFormId);
-                    if (form) form.submit();
+                    var formId = modalEl ? modalEl.getAttribute('data-form-id') : '';
+                    if (!formId) return;
+                    var form = document.getElementById(formId);
+                    if (form) {
+                        // Hide modal if jQuery + BS4 available
+                        if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+                            jQuery('#confirmRunModal').modal('hide');
+                        }
+                        form.submit();
+                    }
                 });
             }
-        }
+        });
     })();
     </script>
 </div>
