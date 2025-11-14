@@ -2,68 +2,84 @@
 
 declare(strict_types=1);
 
-function asset(string $path): string
-{
-    return APP_URL . '/public/assets/' . ltrim($path, '/');
+if (!function_exists('asset')) {
+    function asset(string $path): string
+    {
+        return APP_URL . '/public/assets/' . ltrim($path, '/');
+    }
 }
 
-function activity_log(string $action, ?string $description = null): void
-{
-    try {
+if (!function_exists('activity_log')) {
+    function activity_log(string $action, ?string $description = null): void
+    {
+        try {
+            $user = current_user();
+            $userId = $user['id'] ?? null;
+            $model = new ActivityLog();
+            $model->record($userId, $action, $description);
+        } catch (Throwable $e) {
+            error_log('[activity_log] ' . $e->getMessage());
+        }
+    }
+}
+
+if (!function_exists('uploads_url')) {
+    function uploads_url(string $path = ''): string
+    {
+        $relative = ltrim($path, '/');
+        if (strpos($relative, 'uploads/') === 0) {
+            $relative = substr($relative, strlen('uploads/'));
+        }
+        $fullPath = BASE_PATH . '/public/uploads/' . $relative;
+
+        if ($relative === '' || !file_exists($fullPath)) {
+            return asset('img/undraw_profile.svg');
+        }
+
+        return APP_URL . '/public/uploads/' . $relative;
+    }
+}
+
+if (!function_exists('route')) {
+    function route(string $page, array $params = []): string
+    {
+        $query = array_merge(['page' => $page], $params);
+        return APP_URL . '/public/index.php?' . http_build_query($query);
+    }
+}
+
+if (!function_exists('redirect')) {
+    function redirect(string $url): void
+    {
+        header('Location: ' . $url);
+        exit;
+    }
+}
+
+if (!function_exists('sanitize')) {
+    function sanitize(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('current_user')) {
+    function current_user(): ?array
+    {
+        return $_SESSION['user'] ?? null;
+    }
+}
+
+if (!function_exists('has_role')) {
+    function has_role(string ...$roles): bool
+    {
         $user = current_user();
-        $userId = $user['id'] ?? null;
-        $model = new ActivityLog();
-        $model->record($userId, $action, $description);
-    } catch (Throwable $e) {
-        error_log('[activity_log] ' . $e->getMessage());
+        if (!$user) {
+            return false;
+        }
+
+        return in_array($user['role'], $roles, true);
     }
-}
-
-function uploads_url(string $path = ''): string
-{
-    $relative = ltrim($path, '/');
-    if (strpos($relative, 'uploads/') === 0) {
-        $relative = substr($relative, strlen('uploads/'));
-    }
-    $fullPath = BASE_PATH . '/public/uploads/' . $relative;
-
-    if ($relative === '' || !file_exists($fullPath)) {
-        return asset('img/undraw_profile.svg');
-    }
-
-    return APP_URL . '/public/uploads/' . $relative;
-}
-
-function route(string $page, array $params = []): string
-{
-    $query = array_merge(['page' => $page], $params);
-    return APP_URL . '/public/index.php?' . http_build_query($query);
-}
-
-function redirect(string $url): void
-{
-    header('Location: ' . $url);
-    exit;
-}
-
-function sanitize(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
-function current_user(): ?array
-{
-    return $_SESSION['user'] ?? null;
-}
-
-function has_role(string ...$roles): bool
-{
-    $user = current_user();
-    if (!$user) {
-        return false;
-    }
-
-    return in_array($user['role'], $roles, true);
 }
 
 if (!function_exists('ensure_csrf_token')) {
