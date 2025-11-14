@@ -773,17 +773,17 @@ function pullAttendanceFromDevice(array $device): array
     }
 
     $autoload = BASE_PATH . '/vendor/autoload.php';
-    if (!class_exists('ZKLib')) {
+    if (!class_exists('\\ZKLib\\ZKLib')) {
         if (file_exists($autoload)) {
             require_once $autoload;
         }
     }
 
-    if (!class_exists('ZKLib')) {
-        throw new RuntimeException('Library ZKLib belum terpasang. Jalankan composer require totemo/zklib atau tambahkan secara manual.');
+    if (!class_exists('\\ZKLib\\ZKLib')) {
+        throw new RuntimeException('Library ZKLib belum terpasang atau tidak ditemukan (kelas \\ZKLib\\ZKLib). Pastikan paket aditia-dev/zklib sudah ter-install.');
     }
 
-    $zk = new ZKLib($device['ip'], (int) $device['port']);
+    $zk = new \ZKLib\ZKLib($device['ip'], (int) $device['port']);
 
     if (!$zk->connect()) {
         throw new RuntimeException('Gagal terhubung ke perangkat.');
