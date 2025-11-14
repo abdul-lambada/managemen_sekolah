@@ -87,22 +87,24 @@ function verify_csrf_token(?string $token): bool
     return $valid;
 }
 
-function ensure_settings_table(): void
-{
-    static $ensured = false;
-    if ($ensured) {
-        return;
+if (!function_exists('ensure_settings_table')) {
+    function ensure_settings_table(): void
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return;
+        }
+
+        $sql = "CREATE TABLE IF NOT EXISTS settings (
+            option_key VARCHAR(100) NOT NULL PRIMARY KEY,
+            option_value TEXT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+
+        db()->exec($sql);
+        $ensured = true;
     }
-
-    $sql = "CREATE TABLE IF NOT EXISTS settings (
-        option_key VARCHAR(100) NOT NULL PRIMARY KEY,
-        option_value TEXT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-
-    db()->exec($sql);
-    $ensured = true;
 }
 
 if (!function_exists('app_settings')) {
