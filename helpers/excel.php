@@ -104,7 +104,9 @@ function read_spreadsheet_to_array(string $filePath): array
     $rowIndex = 0;
     while (($data = fgetcsv($handle, 0, ',')) !== false) {
         $rowIndex++;
-        $data = array_map(static fn ($value) => trim((string) $value), $data);
+        $data = array_map(static function ($value) {
+            return trim((string) $value);
+        }, $data);
         if ($rowIndex === 1) {
             $headers = normalize_import_headers($data);
             continue;
