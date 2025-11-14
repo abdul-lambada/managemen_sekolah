@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 class User extends Model
 {
-    protected string $table = 'users';
+    protected $table = 'users';
 
     public function findByName(string $name): ?array
     {
