@@ -99,12 +99,16 @@ class AutomationController extends Controller
 
     private function statusLabel(string $status): string
     {
-        return match ($status) {
-            'success' => 'Berhasil',
-            'warning' => 'Perlu perhatian',
-            'error' => 'Gagal',
-            default => 'Tidak diketahui',
-        };
+        switch ($status) {
+            case 'success':
+                return 'Berhasil';
+            case 'warning':
+                return 'Perlu perhatian';
+            case 'error':
+                return 'Gagal';
+            default:
+                return 'Tidak diketahui';
+        }
     }
 
     private function runCommand(string $command): string
