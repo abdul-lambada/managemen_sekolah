@@ -7,6 +7,7 @@ namespace Composer\Autoload;
 class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
 {
     public static $files = array (
+        '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
         '2cffec82183ee1cea088009cef9a6fc3' => __DIR__ . '/..' . '/ezyang/htmlpurifier/library/HTMLPurifier.composer.php',
         '8e3f730f5dcdb1767b6f040803e51e6a' => __DIR__ . '/../..' . '/helpers/app.php',
         '1663848586c8976c90271e042f7804e7' => __DIR__ . '/../..' . '/helpers/flash.php',
@@ -24,6 +25,7 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         ),
         'S' => 
         array (
+            'Symfony\\Polyfill\\Mbstring\\' => 26,
             'Svg\\' => 4,
             'Sabberworm\\CSS\\' => 15,
         ),
@@ -36,6 +38,7 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         ),
         'M' => 
         array (
+            'MyCLabs\\Enum\\' => 13,
             'Matrix\\' => 7,
             'Masterminds\\' => 12,
         ),
@@ -49,7 +52,6 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         ),
         'C' => 
         array (
-            'Composer\\Pcre\\' => 14,
             'Complex\\' => 8,
         ),
         'A' => 
@@ -66,6 +68,10 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         'ZKLib\\' => 
         array (
             0 => __DIR__ . '/..' . '/aditia-dev/zklib/src',
+        ),
+        'Symfony\\Polyfill\\Mbstring\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
         'Svg\\' => 
         array (
@@ -92,6 +98,10 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
         ),
+        'MyCLabs\\Enum\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/myclabs/php-enum/src',
+        ),
         'Matrix\\' => 
         array (
             0 => __DIR__ . '/..' . '/markbaker/matrix/classes/src',
@@ -107,10 +117,6 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
         'Dompdf\\' => 
         array (
             0 => __DIR__ . '/..' . '/dompdf/dompdf/src',
-        ),
-        'Composer\\Pcre\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/composer/pcre/src',
         ),
         'Complex\\' => 
         array (
@@ -135,6 +141,7 @@ class ComposerStaticInitd5a4b1cdd7f3c5d6ecf1b26863504111
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'Dompdf\\Cpdf' => __DIR__ . '/..' . '/dompdf/dompdf/lib/Cpdf.php',
+        'Stringable' => __DIR__ . '/..' . '/myclabs/php-enum/stubs/Stringable.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
