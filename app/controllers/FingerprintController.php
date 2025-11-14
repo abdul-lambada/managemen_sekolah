@@ -4,28 +4,42 @@ declare(strict_types=1);
 
 class FingerprintController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
         $this->requireRole('admin');
 
         $action = $_GET['action'] ?? 'list';
 
-        return match ($action) {
-            'create' => $this->create(),
-            'store' => $this->store(),
-            'edit' => $this->edit(),
-            'update' => $this->update(),
-            'delete' => $this->delete(),
-            'logs' => $this->buildLogs(),
-            'sync' => $this->sync(),
-            'uids' => $this->uids(),
-            'store_uid' => $this->store_uid(),
-            'delete_uid' => $this->delete_uid(),
-            'uids_siswa' => $this->uids_siswa(),
-            'store_uid_siswa' => $this->store_uid_siswa(),
-            'delete_uid_siswa' => $this->delete_uid_siswa(),
-            default => $this->listing(),
-        };
+        switch ($action) {
+            case 'create':
+                return $this->create();
+            case 'store':
+                return $this->store();
+            case 'edit':
+                return $this->edit();
+            case 'update':
+                return $this->update();
+            case 'delete':
+                return $this->delete();
+            case 'logs':
+                return $this->buildLogs();
+            case 'sync':
+                return $this->sync();
+            case 'uids':
+                return $this->uids();
+            case 'store_uid':
+                return $this->store_uid();
+            case 'delete_uid':
+                return $this->delete_uid();
+            case 'uids_siswa':
+                return $this->uids_siswa();
+            case 'store_uid_siswa':
+                return $this->store_uid_siswa();
+            case 'delete_uid_siswa':
+                return $this->delete_uid_siswa();
+            default:
+                return $this->listing();
+        }
     }
 
     private function listing(): array
