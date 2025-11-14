@@ -96,7 +96,7 @@ class AuthController extends Controller
         ];
     }
 
-    public function processForgotPassword(): array|string
+    public function processForgotPassword(): array
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             redirect(route('forgot_password'));
