@@ -105,43 +105,45 @@ function ensure_settings_table(): void
     $ensured = true;
 }
 
-function app_settings(bool $refresh = false): array
-{
-    static $cache = null;
+if (!function_exists('app_settings')) {
+    function app_settings(bool $refresh = false): array
+    {
+        static $cache = null;
 
-    if ($cache !== null && !$refresh) {
-        return $cache;
-    }
-
-    $defaults = [
-        'app_name' => APP_NAME,
-        'app_tagline' => '',
-        'favicon' => null,
-        'attendance_morning_start' => null,
-        'attendance_morning_end' => null,
-        'attendance_evening_start' => null,
-        'attendance_evening_end' => null,
-    ];
-
-    try {
-        ensure_settings_table();
-
-        $stmt = db()->prepare("SELECT option_key, option_value FROM settings WHERE option_key IN ('app_name', 'app_tagline', 'favicon', 'attendance_morning_start', 'attendance_morning_end', 'attendance_evening_start', 'attendance_evening_end')");
-        $stmt->execute();
-        $rows = $stmt->fetchAll();
-
-        $values = $defaults;
-        foreach ($rows as $row) {
-            $key = $row['option_key'];
-            if (array_key_exists($key, $values)) {
-                $values[$key] = $row['option_value'];
-            }
+        if ($cache !== null && !$refresh) {
+            return $cache;
         }
 
-        $cache = $values;
-    } catch (Throwable $e) {
-        $cache = $defaults;
-    }
+        $defaults = [
+            'app_name' => APP_NAME,
+            'app_tagline' => '',
+            'favicon' => null,
+            'attendance_morning_start' => null,
+            'attendance_morning_end' => null,
+            'attendance_evening_start' => null,
+            'attendance_evening_end' => null,
+        ];
 
-    return $cache;
+        try {
+            ensure_settings_table();
+
+            $stmt = db()->prepare("SELECT option_key, option_value FROM settings WHERE option_key IN ('app_name', 'app_tagline', 'favicon', 'attendance_morning_start', 'attendance_morning_end', 'attendance_evening_start', 'attendance_evening_end')");
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+
+            $values = $defaults;
+            foreach ($rows as $row) {
+                $key = $row['option_key'];
+                if (array_key_exists($key, $values)) {
+                    $values[$key] = $row['option_value'];
+                }
+            }
+
+            $cache = $values;
+        } catch (Throwable $e) {
+            $cache = $defaults;
+        }
+
+        return $cache;
+    }
 }
