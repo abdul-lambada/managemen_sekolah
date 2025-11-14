@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 abstract class Controller
 {
-    protected array $data = [];
+    protected $data = [];
 
-    public function set(string $key, mixed $value): void
+    public function set(string $key, $value): void
     {
         $this->data[$key] = $value;
     }
