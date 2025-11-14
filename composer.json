@@ -19,5 +19,10 @@
             "helpers/excel.php",
             "helpers/view.php"
         ]
+    },
+    "config": {
+        "platform": {
+            "php": "7.3.0"
+        }
     }
 }
