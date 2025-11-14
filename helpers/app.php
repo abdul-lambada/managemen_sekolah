@@ -66,25 +66,29 @@ function has_role(string ...$roles): bool
     return in_array($user['role'], $roles, true);
 }
 
-function ensure_csrf_token(): string
-{
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
+if (!function_exists('ensure_csrf_token')) {
+    function ensure_csrf_token(): string
+    {
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
 
-    return $_SESSION['csrf_token'];
+        return $_SESSION['csrf_token'];
+    }
 }
 
-function verify_csrf_token(?string $token): bool
-{
-    $valid = $token !== null && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+if (!function_exists('verify_csrf_token')) {
+    function verify_csrf_token(?string $token): bool
+    {
+        $valid = $token !== null && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 
-    if ($valid) {
-        unset($_SESSION['csrf_token']);
-        ensure_csrf_token();
+        if ($valid) {
+            unset($_SESSION['csrf_token']);
+            ensure_csrf_token();
+        }
+
+        return $valid;
     }
-
-    return $valid;
 }
 
 if (!function_exists('ensure_settings_table')) {
