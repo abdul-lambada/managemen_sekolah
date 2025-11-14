@@ -767,9 +767,9 @@ exit($summary['total_failure'] > 0 ? 2 : 0);
  */
 function pullAttendanceFromDevice(array $device): array
 {
-    // Guard PHP version for composer packages requiring >=8.1
-    if (PHP_VERSION_ID < 80100) {
-        throw new RuntimeException('PHP 8.1+ diperlukan untuk modul ZKLib. Versi saat ini: ' . PHP_VERSION . '. Mohon jalankan script pada PHP 8.1+ atau sediakan bridge eksternal.');
+    // Guard minimal PHP version for ZKLib integration
+    if (PHP_VERSION_ID < 70300) {
+        throw new RuntimeException('PHP 7.3+ diperlukan untuk modul ZKLib. Versi saat ini: ' . PHP_VERSION . '. Mohon jalankan script pada PHP 7.3+ atau sediakan bridge eksternal.');
     }
 
     $autoload = BASE_PATH . '/vendor/autoload.php';

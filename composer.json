@@ -2,7 +2,7 @@
     "name": "managemen_sekolah/app",
     "description": "School management application",
     "require": {
-        "php": "^8.1",
+        "php": "^7.3",
         "dompdf/dompdf": "^2.0",
         "phpoffice/phpspreadsheet": "^1.29",
         "aditia-dev/zklib": "dev-main"
