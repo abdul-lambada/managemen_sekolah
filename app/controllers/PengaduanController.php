@@ -1,23 +1,24 @@
 <?php
 
-declare(strict_types=1);
-
 final class PengaduanController extends Controller
 {
-    public function index(): array
+    public function index()
     {
         $this->requireRole('admin');
 
-        $action = $_GET['action'] ?? 'list';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 
-        return match ($action) {
-            'show' => $this->show(),
-            'update_status' => $this->updateStatus(),
-            default => $this->listing(),
-        };
+        switch ($action) {
+            case 'show':
+                return $this->show();
+            case 'update_status':
+                return $this->updateStatus();
+            default:
+                return $this->listing();
+        }
     }
 
-    private function listing(): array
+    private function listing()
     {
         $model = new Pengaduan();
         $csrfToken = ensure_csrf_token();
@@ -36,7 +37,7 @@ final class PengaduanController extends Controller
         return $response;
     }
 
-    private function show(): array
+    private function show()
     {
         $id = (int) ($_GET['id'] ?? 0);
         if ($id <= 0) {
@@ -68,7 +69,7 @@ final class PengaduanController extends Controller
         return $response;
     }
 
-    private function updateStatus(): string
+    private function updateStatus()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             redirect(route('pengaduan'));
