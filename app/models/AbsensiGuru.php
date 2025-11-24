@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class AbsensiGuru extends Model
 {
-    protected string $table = 'absensi_guru';
-    protected string $primaryKey = 'id_absensi_guru';
+    protected $table = 'absensi_guru';
+    protected $primaryKey = 'id_absensi_guru';
 
-    public function allWithGuru(?string $startDate = null, ?string $endDate = null): array
+    public function allWithGuru($startDate = null, $endDate = null)
     {
         $conditions = [];
         $params = [];
