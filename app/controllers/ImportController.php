@@ -1,19 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
 final class ImportController extends Controller
 {
     private const ALLOWED_TYPES = ['guru', 'siswa', 'kelas', 'jadwal'];
 
-    private array $typeLabels = [
+    private $typeLabels = [
         'guru' => 'Data Guru',
         'siswa' => 'Data Siswa',
         'kelas' => 'Data Kelas',
         'jadwal' => 'Jadwal Pelajaran',
     ];
 
-    private array $columnInfo = [
+    private $columnInfo = [
         'guru' => [
             ['key' => 'nama_guru', 'label' => 'Nama Guru *'],
             ['key' => 'nip', 'label' => 'NIP *'],
@@ -52,27 +50,31 @@ final class ImportController extends Controller
         ],
     ];
 
-    private ?array $kelasCache = null;
-    private ?array $jurusanCache = null;
+    private $kelasCache = null;
+    private $jurusanCache = null;
 
-    public function index(): array|string
+    public function index()
     {
-        $action = $_GET['action'] ?? 'form';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'form';
 
         if ($action === 'template') {
             $this->downloadTemplate();
             exit;
         }
 
-        return match ($action) {
-            'upload' => $this->upload(),
-            'preview' => $this->preview(),
-            'store' => $this->store(),
-            default => $this->form(),
-        };
+        switch ($action) {
+            case 'upload':
+                return $this->upload();
+            case 'preview':
+                return $this->preview();
+            case 'store':
+                return $this->store();
+            default:
+                return $this->form();
+        }
     }
 
-    private function mapJadwalRow(array $row, array &$item): void
+    private function mapJadwalRow($row, &$item)
     {
         $kelasNama = trim($row['kelas'] ?? '');
         if ($kelasNama === '') {
@@ -147,7 +149,7 @@ final class ImportController extends Controller
         ];
     }
 
-    private function resolveMapelId(string $kode, string $nama): ?int
+    private function resolveMapelId($kode, $nama)
     {
         if ($kode !== '') {
             $stmt = db()->prepare('SELECT id_mata_pelajaran FROM mata_pelajaran WHERE kode_mapel = :kode LIMIT 1');
@@ -164,7 +166,7 @@ final class ImportController extends Controller
         return null;
     }
 
-    private function resolveGuruId(string $nip, string $nama): ?int
+    private function resolveGuruId($nip, $nama)
     {
         if ($nip !== '') {
             $stmt = db()->prepare('SELECT id_guru FROM guru WHERE nip = :nip LIMIT 1');
@@ -181,7 +183,7 @@ final class ImportController extends Controller
         return null;
     }
 
-    private function hasJadwalOverlap(array $data, ?int $excludeId = null): bool
+    private function hasJadwalOverlap($data, $excludeId = null)
     {
         $pdo = db();
         $excludeClause = $excludeId ? 'AND id_jadwal <> :exclude' : '';
@@ -207,7 +209,7 @@ final class ImportController extends Controller
         return (int)$stmt->fetchColumn() > 0;
     }
 
-    private function insertJadwal(array $data): void
+    private function insertJadwal($data)
     {
         $model = new Jadwal();
         $model->create([
@@ -222,14 +224,14 @@ final class ImportController extends Controller
         ]);
     }
 
-    private function isValidTime(?string $time): bool
+    private function isValidTime($time)
     {
         if (!$time) { return false; }
         $dt = DateTime::createFromFormat('H:i', $time);
         return $dt !== false && $dt->format('H:i') === $time;
     }
 
-    private function downloadTemplate(): void
+    private function downloadTemplate()
     {
         $this->requireRole('admin');
 
@@ -278,7 +280,7 @@ final class ImportController extends Controller
         fclose($output);
     }
 
-    private function form(): array
+    private function form()
     {
         $this->requireRole('admin');
 
@@ -298,7 +300,7 @@ final class ImportController extends Controller
         return $response;
     }
 
-    private function upload(): array|string
+    private function upload()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -353,7 +355,7 @@ final class ImportController extends Controller
         redirect(route('import', ['action' => 'preview', 'type' => $type]));
     }
 
-    private function preview(): array
+    private function preview()
     {
         $this->requireRole('admin');
 
@@ -386,7 +388,7 @@ final class ImportController extends Controller
         return $response;
     }
 
-    private function store(): void
+    private function store()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -404,7 +406,9 @@ final class ImportController extends Controller
             redirect(route('import'));
         }
 
-        $validRows = array_filter($preview['rows'], static fn (array $row): bool => empty($row['errors']));
+        $validRows = array_filter($preview['rows'], function ($row) {
+            return empty($row['errors']);
+        });
         if (empty($validRows)) {
             flash('import_alert', 'Tidak ada baris valid untuk diimpor.', 'warning');
             redirect(route('import'));
@@ -471,7 +475,7 @@ final class ImportController extends Controller
         redirect(route('import'));
     }
 
-    private function processRows(string $type, array $rows): array
+    private function processRows($type, $rows)
     {
         $processed = [];
         $seenKeys = [];
@@ -506,7 +510,7 @@ final class ImportController extends Controller
         return $processed;
     }
 
-    private function mapGuruRow(array $row, array &$item, array &$seen): void
+    private function mapGuruRow($row, &$item, &$seen)
     {
         $nama = trim($row['nama_guru'] ?? '');
         $nip = trim($row['nip'] ?? '');
@@ -548,7 +552,7 @@ final class ImportController extends Controller
         ];
     }
 
-    private function mapSiswaRow(array $row, array &$item, array &$seen): void
+    private function mapSiswaRow($row, &$item, &$seen)
     {
         $nama = trim($row['nama_siswa'] ?? '');
         $nisn = trim($row['nisn'] ?? '');
@@ -607,7 +611,7 @@ final class ImportController extends Controller
         ];
     }
 
-    private function mapKelasRow(array $row, array &$item, array &$seen): void
+    private function mapKelasRow($row, &$item, &$seen)
     {
         $nama = trim($row['nama_kelas'] ?? '');
         $jurusanNama = trim($row['jurusan'] ?? '');
@@ -639,7 +643,7 @@ final class ImportController extends Controller
         ];
     }
 
-    private function computeCounts(array $rows): array
+    private function computeCounts($rows)
     {
         $valid = 0;
         $invalid = 0;
@@ -658,21 +662,29 @@ final class ImportController extends Controller
         ];
     }
 
-    private function normalizeGender(?string $value): ?string
+    private function normalizeGender($value)
     {
         if ($value === null) {
             return null;
         }
 
         $value = strtolower(trim($value));
-        return match ($value) {
-            'l', 'laki-laki', 'laki laki', 'pria' => 'Laki-laki',
-            'p', 'perempuan', 'wanita' => 'Perempuan',
-            default => null,
-        };
+        switch ($value) {
+            case 'l':
+            case 'laki-laki':
+            case 'laki laki':
+            case 'pria':
+                return 'Laki-laki';
+            case 'p':
+            case 'perempuan':
+            case 'wanita':
+                return 'Perempuan';
+            default:
+                return null;
+        }
     }
 
-    private function parseDate(?string $value, ?string &$error): ?string
+    private function parseDate($value, &$error)
     {
         $error = null;
 
@@ -693,7 +705,7 @@ final class ImportController extends Controller
         return null;
     }
 
-    private function sanitizePhone(?string $value): ?string
+    private function sanitizePhone($value)
     {
         if ($value === null) {
             return null;
@@ -703,7 +715,7 @@ final class ImportController extends Controller
         return $digits !== '' ? $digits : null;
     }
 
-    private function resolveKelasIdByName(string $name): ?int
+    private function resolveKelasIdByName($name)
     {
         if ($this->kelasCache === null) {
             $kelasModel = new Kelas();
@@ -717,7 +729,7 @@ final class ImportController extends Controller
         return $this->kelasCache[$key] ?? null;
     }
 
-    private function resolveJurusanIdByName(string $name): ?int
+    private function resolveJurusanIdByName($name)
     {
         if ($this->jurusanCache === null) {
             $jurusanModel = new Jurusan();
@@ -731,14 +743,14 @@ final class ImportController extends Controller
         return $this->jurusanCache[$key] ?? null;
     }
 
-    private function guruExists(string $nip): bool
+    private function guruExists($nip)
     {
         $stmt = db()->prepare('SELECT id_guru FROM guru WHERE nip = :nip LIMIT 1');
         $stmt->execute(['nip' => $nip]);
         return (bool) $stmt->fetchColumn();
     }
 
-    private function siswaExists(string $nisn, string $nis): bool
+    private function siswaExists($nisn, $nis)
     {
         $stmt = db()->prepare('SELECT id_siswa FROM siswa WHERE nisn = :nisn OR nis = :nis LIMIT 1');
         $stmt->execute([
@@ -748,14 +760,14 @@ final class ImportController extends Controller
         return (bool) $stmt->fetchColumn();
     }
 
-    private function kelasExists(string $namaKelas): bool
+    private function kelasExists($namaKelas)
     {
         $stmt = db()->prepare('SELECT id_kelas FROM kelas WHERE nama_kelas = :nama LIMIT 1');
         $stmt->execute(['nama' => $namaKelas]);
         return (bool) $stmt->fetchColumn();
     }
 
-    private function insertGuru(array $data): void
+    private function insertGuru($data)
     {
         // create or reuse user by name (use NIP as username)
         $userId = $this->createOrGetUser($data['nip'], 'guru', (string) $data['password'], $data['phone']);
@@ -772,7 +784,7 @@ final class ImportController extends Controller
         ]);
     }
 
-    private function insertSiswa(array $data): void
+    private function insertSiswa($data)
     {
         // create or reuse user by name (use NISN as username)
         $userId = $this->createOrGetUser($data['nisn'], 'siswa', (string) $data['password'], $data['phone']);
@@ -791,7 +803,7 @@ final class ImportController extends Controller
         ]);
     }
 
-    private function createOrGetUser(string $username, string $role, string $passwordPlain, ?string $phone = null): int
+    private function createOrGetUser($username, $role, $passwordPlain, $phone = null)
     {
         $userModel = new User();
         $existing = $userModel->findByName($username);
@@ -813,7 +825,7 @@ final class ImportController extends Controller
         return (int) ($created['id'] ?? 0);
     }
 
-    private function insertKelas(array $data): void
+    private function insertKelas($data)
     {
         $model = new Kelas();
         $model->create([
@@ -822,7 +834,7 @@ final class ImportController extends Controller
         ]);
     }
 
-    private function assertPost(): void
+    private function assertPost()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             http_response_code(405);
