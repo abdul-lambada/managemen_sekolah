@@ -1,8 +1,6 @@
 <?php
 
-declare(strict_types=1);
-
-$stats = $stats ?? [];
+$stats = isset($stats) ? $stats : [];
 ?>
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -24,14 +22,14 @@ $stats = $stats ?? [];
                                     <?php if (is_array($stat['value'])): ?>
                                         <ul class="mb-0 pl-3">
                                             <?php foreach ($stat['value'] as $key => $value): ?>
-                                                <li><?= sanitize("{$key}: {$value}") ?></li>
+                                                <li><?= sanitize($key . ': ' . (is_array($value) ? print_r($value, true) : $value)) ?></li>
                                             <?php endforeach; ?>
                                         </ul>
                                     <?php else: ?>
                                         <?= sanitize((string) $stat['value']) ?>
                                     <?php endif; ?>
                                 </div>
-                                <small class="text-muted">Diperbarui: <?= sanitize($stat['updated_at'] ?? '-') ?></small>
+                                <small class="text-muted">Diperbarui: <?= sanitize(isset($stat['updated_at']) ? $stat['updated_at'] : '-') ?></small>
                             </div>
                             <div class="col-auto">
                                 <i class="fas fa-chart-line fa-2x text-gray-300"></i>
