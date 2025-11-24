@@ -1,37 +1,35 @@
 <?php
 
-declare(strict_types=1);
-
 final class LaporanTambahanController extends Controller
 {
-    private LaporanTambahan $reportModel;
+    private $reportModel;
 
     public function __construct()
     {
         $this->reportModel = new LaporanTambahan();
     }
 
-    public function keterlambatan(): array|string
+    public function keterlambatan()
     {
         $this->requireRole('admin', 'guru');
 
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
-        $export = $_GET['export'] ?? null;
+        $start = isset($_GET['start']) ? $_GET['start'] : null;
+        $end = isset($_GET['end']) ? $_GET['end'] : null;
+        $export = isset($_GET['export']) ? $_GET['export'] : null;
 
-        $records = $this->reportModel->guruTerlambat($start ?: null, $end ?: null);
+        $records = $this->reportModel->guruTerlambat(($start ? $start : null), ($end ? $end : null));
 
         if (in_array($export, ['csv', 'pdf', 'excel'], true)) {
             $headers = ['Tanggal', 'Nama Guru', 'Mapel', 'Kelas', 'Jam Terjadwal', 'Jam Masuk', 'Menit Terlambat'];
-            $rows = array_map(static function (array $row): array {
+            $rows = array_map(function ($row) {
                 return [
                     $row['tanggal'],
                     $row['nama_guru'],
                     $row['nama_mapel'],
                     $row['nama_kelas'],
                     substr($row['jam_mulai'], 0, 5) . ' - ' . substr($row['jam_selesai'], 0, 5),
-                    $row['jam_masuk'] ?? '-',
-                    (string) ($row['menit_terlambat'] ?? 0),
+                    isset($row['jam_masuk']) ? $row['jam_masuk'] : '-',
+                    (string) (isset($row['menit_terlambat']) ? $row['menit_terlambat'] : 0),
                 ];
             }, $records);
 
@@ -52,20 +50,20 @@ final class LaporanTambahanController extends Controller
         return $response;
     }
 
-    public function kelas(): array|string
+    public function kelas()
     {
         $this->requireRole('admin', 'guru');
 
         $kelasId = isset($_GET['kelas']) && $_GET['kelas'] !== '' ? (int) $_GET['kelas'] : null;
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
-        $export = $_GET['export'] ?? null;
+        $start = isset($_GET['start']) ? $_GET['start'] : null;
+        $end = isset($_GET['end']) ? $_GET['end'] : null;
+        $export = isset($_GET['export']) ? $_GET['export'] : null;
 
-        $records = $this->reportModel->rekapSiswaPerKelas($kelasId, $start ?: null, $end ?: null);
+        $records = $this->reportModel->rekapSiswaPerKelas($kelasId, ($start ? $start : null), ($end ? $end : null));
 
         if (in_array($export, ['csv', 'pdf', 'excel'], true)) {
             $headers = ['Jurusan', 'Kelas', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Total'];
-            $rows = array_map(static function (array $row): array {
+            $rows = array_map(function ($row) {
                 return [
                     $row['nama_jurusan'],
                     $row['nama_kelas'],
@@ -96,7 +94,7 @@ final class LaporanTambahanController extends Controller
         return $response;
     }
 
-    private function export(string $type, string $filename, string $title, array $headers, array $rows): void
+    private function export($type, $filename, $title, $headers, $rows)
     {
         if ($type === 'pdf') {
             export_array_to_pdf($filename, $title, $headers, $rows, 'landscape');
