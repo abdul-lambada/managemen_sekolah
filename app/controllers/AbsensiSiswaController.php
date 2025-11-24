@@ -1,21 +1,19 @@
 <?php
 
-declare(strict_types=1);
-
 class AbsensiSiswaController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
         $this->requireRole('admin', 'guru');
 
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
+        $start = isset($_GET['start']) ? $_GET['start'] : null;
+        $end = isset($_GET['end']) ? $_GET['end'] : null;
         $kelasId = isset($_GET['kelas']) ? (int) $_GET['kelas'] : null;
 
         $model = new AbsensiSiswa();
-        $records = $model->allWithSiswa($start ?: null, $end ?: null, $kelasId ?: null);
+        $records = $model->allWithSiswa(($start ? $start : null), ($end ? $end : null), ($kelasId ? $kelasId : null));
 
-        $export = $_GET['export'] ?? null;
+        $export = isset($_GET['export']) ? $_GET['export'] : null;
 
         if ($export === 'csv') {
             $this->exportCsv($records, $start, $end, $kelasId);
@@ -23,7 +21,7 @@ class AbsensiSiswaController extends Controller
 
         if ($export === 'pdf') {
             $headers = ['Tanggal', 'Nama Siswa', 'NISN', 'NIS', 'Kelas', 'Jurusan', 'Status', 'Jam Masuk', 'Jam Keluar', 'Catatan'];
-            $rows = array_map(static function (array $row): array {
+            $rows = array_map(function ($row) {
                 return [
                     $row['tanggal'],
                     $row['nama_siswa'],
@@ -32,9 +30,9 @@ class AbsensiSiswaController extends Controller
                     $row['nama_kelas'],
                     $row['nama_jurusan'],
                     $row['status_kehadiran'],
-                    $row['jam_masuk'] ?? '-',
-                    $row['jam_keluar'] ?? '-',
-                    $row['catatan'] ?? '-',
+                    isset($row['jam_masuk']) ? $row['jam_masuk'] : '-',
+                    isset($row['jam_keluar']) ? $row['jam_keluar'] : '-',
+                    isset($row['catatan']) ? $row['catatan'] : '-',
                 ];
             }, $records);
 
@@ -63,7 +61,7 @@ class AbsensiSiswaController extends Controller
         return $response;
     }
 
-    private function exportCsv(array $records, ?string $start, ?string $end, ?int $kelasId): void
+    private function exportCsv($records, $start, $end, $kelasId)
     {
         $kelasSegment = $kelasId ? 'kelas-' . $kelasId : 'semua';
         $filename = 'absensi_siswa_' . $kelasSegment . '_' . ($start ?: 'all') . '_' . ($end ?: date('Ymd')) . '_' . date('His') . '.csv';
