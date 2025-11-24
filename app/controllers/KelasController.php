@@ -1,25 +1,30 @@
 <?php
 
-declare(strict_types=1);
-
 class KelasController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
-        $action = $_GET['action'] ?? 'list';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 
-        return match ($action) {
-            'create' => $this->create(),
-            'store' => $this->store(),
-            'edit' => $this->edit(),
-            'update' => $this->update(),
-            'delete' => $this->delete(),
-            'show' => $this->show(),
-            default => $this->listing(),
-        };
+        switch ($action) {
+            case 'create':
+                return $this->create();
+            case 'store':
+                return $this->store();
+            case 'edit':
+                return $this->edit();
+            case 'update':
+                return $this->update();
+            case 'delete':
+                return $this->delete();
+            case 'show':
+                return $this->show();
+            default:
+                return $this->listing();
+        }
     }
 
-    private function listing(): array
+    private function listing()
     {
         $this->requireRole('admin');
 
@@ -49,7 +54,7 @@ class KelasController extends Controller
         return $response;
     }
 
-    private function show(): array
+    private function show()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -91,7 +96,7 @@ class KelasController extends Controller
         return $response;
     }
 
-    private function create(): array
+    private function create()
     {
         $this->requireRole('admin');
 
@@ -116,7 +121,7 @@ class KelasController extends Controller
         return $response;
     }
 
-    private function edit(): array
+    private function edit()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -152,7 +157,7 @@ class KelasController extends Controller
         return $response;
     }
 
-    private function store(): string
+    private function store()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -184,7 +189,7 @@ class KelasController extends Controller
         redirect(route('kelas'));
     }
 
-    private function update(): string
+    private function update()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -222,7 +227,7 @@ class KelasController extends Controller
         redirect(route('kelas'));
     }
 
-    private function delete(): string
+    private function delete()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -249,7 +254,7 @@ class KelasController extends Controller
         redirect(route('kelas'));
     }
 
-    private function sanitizeInput(array $input): array
+    private function sanitizeInput($input)
     {
         return [
             'id' => (int) ($input['id'] ?? 0),
@@ -258,7 +263,7 @@ class KelasController extends Controller
         ];
     }
 
-    private function validate(array $data, bool $isUpdate = false): array
+    private function validate($data, $isUpdate = false)
     {
         $errors = [];
 
@@ -273,7 +278,7 @@ class KelasController extends Controller
         return $errors;
     }
 
-    private function mapToDb(array $data): array
+    private function mapToDb($data)
     {
         return [
             'nama_kelas' => $data['nama_kelas'],
@@ -281,13 +286,13 @@ class KelasController extends Controller
         ];
     }
 
-    private function jurusanOptions(): array
+    private function jurusanOptions()
     {
         $jurusan = new Jurusan();
         return $jurusan->options();
     }
 
-    private function assertPost(): void
+    private function assertPost()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             http_response_code(405);
