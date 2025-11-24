@@ -1,25 +1,30 @@
 <?php
 
-declare(strict_types=1);
-
 class GuruController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
-        $action = $_GET['action'] ?? 'list';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 
-        return match ($action) {
-            'create' => $this->create(),
-            'store' => $this->store(),
-            'edit' => $this->edit(),
-            'update' => $this->update(),
-            'delete' => $this->delete(),
-            'show' => $this->show(),
-            default => $this->list(),
-        };
+        switch ($action) {
+            case 'create':
+                return $this->create();
+            case 'store':
+                return $this->store();
+            case 'edit':
+                return $this->edit();
+            case 'update':
+                return $this->update();
+            case 'delete':
+                return $this->delete();
+            case 'show':
+                return $this->show();
+            default:
+                return $this->list();
+        }
     }
 
-    private function list(): array
+    private function list()
     {
         $this->requireRole('admin');
         $guruModel = new Guru();
@@ -49,7 +54,7 @@ class GuruController extends Controller
         return $response;
     }
 
-    private function show(): array
+    private function show()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -87,7 +92,7 @@ class GuruController extends Controller
         return $response;
     }
 
-    private function create(): array
+    private function create()
     {
         $this->requireRole('admin');
 
@@ -112,7 +117,7 @@ class GuruController extends Controller
         return $response;
     }
 
-    private function edit(): array
+    private function edit()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -148,7 +153,7 @@ class GuruController extends Controller
         return $response;
     }
 
-    private function store(): string
+    private function store()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -197,7 +202,7 @@ class GuruController extends Controller
         redirect(route('guru'));
     }
 
-    private function update(): string
+    private function update()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -253,7 +258,7 @@ class GuruController extends Controller
         redirect(route('guru'));
     }
 
-    private function delete(): string
+    private function delete()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -300,7 +305,7 @@ class GuruController extends Controller
         redirect(route('guru'));
     }
 
-    private function sanitizeInput(array $input): array
+    private function sanitizeInput($input)
     {
         return [
             'id' => (int) ($input['id'] ?? 0),
@@ -314,7 +319,7 @@ class GuruController extends Controller
         ];
     }
 
-    private function validate(array $data, bool $isUpdate = false): array
+    private function validate($data, $isUpdate = false)
     {
         $errors = [];
 
@@ -388,7 +393,7 @@ class GuruController extends Controller
         return $errors;
     }
 
-    private function mapToDb(array $data): array
+    private function mapToDb($data)
     {
         return [
             'nama_guru' => $data['nama_guru'],
@@ -401,18 +406,22 @@ class GuruController extends Controller
         ];
     }
 
-    private function userOptions(?int $currentUserId = null): array
+    private function userOptions($currentUserId = null)
     {
         $pdo = db();
 
         // Hanya ambil user yang sudah digunakan oleh guru (untuk menghindari konflik)
         $usedStmt = $pdo->query("SELECT user_id FROM guru WHERE user_id IS NOT NULL");
         $usedIds = array_map('intval', $usedStmt->fetchAll(PDO::FETCH_COLUMN));
-        $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id > 0));
+        $usedIds = array_values(array_filter($usedIds, function ($id) {
+            return (int) $id > 0;
+        }));
 
         // Jika sedang edit, pastikan current user tetap tersedia
         if ($currentUserId !== null && $currentUserId > 0) {
-            $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id !== $currentUserId));
+            $usedIds = array_values(array_filter($usedIds, function ($id) use ($currentUserId) {
+                return (int) $id !== (int) $currentUserId;
+            }));
         }
 
         // Ambil semua user dengan role 'guru' yang belum digunakan
@@ -452,7 +461,7 @@ class GuruController extends Controller
         return $options;
     }
 
-    private function assertPost(): void
+    private function assertPost()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             http_response_code(405);
