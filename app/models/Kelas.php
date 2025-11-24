@@ -1,19 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
 class Kelas extends Model
 {
-    protected string $table = 'kelas';
-    protected string $primaryKey = 'id_kelas';
+    protected $table = 'kelas';
+    protected $primaryKey = 'id_kelas';
 
-    public function allWithJurusan(): array
+    public function allWithJurusan()
     {
         $sql = "SELECT k.*, j.nama_jurusan FROM kelas k JOIN jurusan j ON k.id_jurusan = j.id_jurusan ORDER BY k.nama_kelas";
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function findWithJurusan(int $id): ?array
+    public function findWithJurusan($id)
     {
         $stmt = $this->db->prepare(
             "SELECT k.*, j.nama_jurusan FROM kelas k JOIN jurusan j ON k.id_jurusan = j.id_jurusan WHERE k.id_kelas = :id LIMIT 1"
@@ -23,13 +21,13 @@ class Kelas extends Model
         return $row ?: null;
     }
 
-    public function options(): array
+    public function options()
     {
         $stmt = $this->db->query("SELECT k.id_kelas, k.nama_kelas, j.nama_jurusan FROM kelas k JOIN jurusan j ON k.id_jurusan = j.id_jurusan ORDER BY j.nama_jurusan, k.nama_kelas");
         return $stmt->fetchAll();
     }
 
-    public function byJurusan(int $jurusanId): array
+    public function byJurusan($jurusanId)
     {
         $stmt = $this->db->prepare(
             "SELECT k.*, j.nama_jurusan FROM kelas k JOIN jurusan j ON k.id_jurusan = j.id_jurusan WHERE k.id_jurusan = :id ORDER BY k.nama_kelas"
