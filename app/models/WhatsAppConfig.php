@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class WhatsAppConfig extends Model
 {
-    protected string $table = 'whatsapp_config';
-    protected string $primaryKey = 'id';
+    protected $table = 'whatsapp_config';
+    protected $primaryKey = 'id';
 
-    public function firstConfig(): ?array
+    public function firstConfig()
     {
         $stmt = $this->db->query('SELECT * FROM whatsapp_config ORDER BY id ASC LIMIT 1');
         $row = $stmt->fetch();
