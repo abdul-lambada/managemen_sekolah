@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 final class Jadwal extends Model
 {
-    protected string $table = 'jadwal_pelajaran';
-    protected string $primaryKey = 'id_jadwal';
+    protected $table = 'jadwal_pelajaran';
+    protected $primaryKey = 'id_jadwal';
 
-    public function allWithRelations(): array
+    public function allWithRelations()
     {
         $sql = <<<'SQL'
 SELECT j.*, k.nama_kelas, mp.nama_mapel, mp.kode_mapel, g.nama_guru
@@ -21,7 +19,7 @@ SQL;
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function findWithRelations(int $id): ?array
+    public function findWithRelations($id)
     {
         $sql = <<<'SQL'
 SELECT j.*, k.nama_kelas, mp.nama_mapel, mp.kode_mapel, g.nama_guru
@@ -40,7 +38,7 @@ SQL;
         return $row ?: null;
     }
 
-    public function filter(array $filters = []): array
+    public function filter($filters = [])
     {
         $conditions = [];
         $params = [];
