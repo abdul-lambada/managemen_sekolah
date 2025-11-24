@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class LaporanAbsensi extends Model
 {
-    protected string $table = 'laporan_absensi';
-    protected string $primaryKey = 'id_laporan';
+    protected $table = 'laporan_absensi';
+    protected $primaryKey = 'id_laporan';
 
-    public function summary(?string $startDate = null, ?string $endDate = null, string $periode = 'Bulanan'): array
+    public function summary($startDate = null, $endDate = null, $periode = 'Bulanan')
     {
         $sql = "SELECT 
                     periode,
