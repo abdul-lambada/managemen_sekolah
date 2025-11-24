@@ -189,23 +189,29 @@ final class ImportController extends Controller
         $excludeClause = $excludeId ? 'AND id_jadwal <> :exclude' : '';
         // kelas overlap
         $stmt = $pdo->prepare("SELECT COUNT(1) FROM jadwal_pelajaran WHERE hari = :hari AND id_kelas = :kelas {$excludeClause} AND jam_mulai < :end AND :start < jam_selesai");
-        $stmt->execute([
+        $params = [
             'hari' => $data['hari'],
             'kelas' => (int)$data['id_kelas'],
             'start' => $data['jam_mulai'],
             'end' => $data['jam_selesai'],
-            ...( $excludeId ? ['exclude' => (int)$excludeId] : [] ),
-        ]);
+        ];
+        if ($excludeId) {
+            $params['exclude'] = (int)$excludeId;
+        }
+        $stmt->execute($params);
         if ((int)$stmt->fetchColumn() > 0) return true;
         // guru overlap
         $stmt = $pdo->prepare("SELECT COUNT(1) FROM jadwal_pelajaran WHERE hari = :hari AND id_guru = :guru {$excludeClause} AND jam_mulai < :end AND :start < jam_selesai");
-        $stmt->execute([
+        $params = [
             'hari' => $data['hari'],
             'guru' => (int)$data['id_guru'],
             'start' => $data['jam_mulai'],
             'end' => $data['jam_selesai'],
-            ...( $excludeId ? ['exclude' => (int)$excludeId] : [] ),
-        ]);
+        ];
+        if ($excludeId) {
+            $params['exclude'] = (int)$excludeId;
+        }
+        $stmt->execute($params);
         return (int)$stmt->fetchColumn() > 0;
     }
 
