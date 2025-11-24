@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class KehadiranSiswaHarian extends Model
 {
-    protected string $table = 'kehadiran_siswa_harian';
-    protected string $primaryKey = 'id';
+    protected $table = 'kehadiran_siswa_harian';
+    protected $primaryKey = 'id';
 
-    public function allWithSiswa(?string $startDate = null, ?string $endDate = null, ?int $kelasId = null): array
+    public function allWithSiswa($startDate = null, $endDate = null, $kelasId = null)
     {
         $this->ensureTableExists();
         $conditions = [];
@@ -33,7 +31,7 @@ class KehadiranSiswaHarian extends Model
         return $stmt->fetchAll();
     }
 
-    public function kelasOptions(): array
+    public function kelasOptions()
     {
         // Ensure dependencies exist
         $this->ensureTableExists();
@@ -41,7 +39,7 @@ class KehadiranSiswaHarian extends Model
         return $stmt->fetchAll();
     }
 
-    private function ensureTableExists(): void
+    private function ensureTableExists()
     {
         $check = $this->db->prepare("SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t");
         $check->execute(['t' => $this->table]);
