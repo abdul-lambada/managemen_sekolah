@@ -1,31 +1,37 @@
 <?php
 
-declare(strict_types=1);
-
 class WhatsAppController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
         $this->requireRole('admin');
-        $action = $_GET['action'] ?? 'config';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'config';
 
-        return match ($action) {
-            'save_config' => $this->saveConfig(),
-            'logs' => $this->logs(),
-            'templates' => $this->templates(),
-            'save_template' => $this->saveTemplate(),
-            'edit_template' => $this->editTemplate(),
-            'update_template' => $this->updateTemplate(),
-            'delete_template' => $this->deleteTemplate(),
-            default => $this->config(),
-        };
+        switch ($action) {
+            case 'save_config':
+                return $this->saveConfig();
+            case 'logs':
+                return $this->logs();
+            case 'templates':
+                return $this->templates();
+            case 'save_template':
+                return $this->saveTemplate();
+            case 'edit_template':
+                return $this->editTemplate();
+            case 'update_template':
+                return $this->updateTemplate();
+            case 'delete_template':
+                return $this->deleteTemplate();
+            default:
+                return $this->config();
+        }
     }
 
-    private function config(): array
+    private function config()
     {
         $configModel = new WhatsAppConfig();
-        $config = $_SESSION['wa_form_data'] ?? $configModel->firstConfig();
-        $errors = $_SESSION['wa_errors'] ?? [];
+        $config = isset($_SESSION['wa_form_data']) ? $_SESSION['wa_form_data'] : $configModel->firstConfig();
+        $errors = isset($_SESSION['wa_errors']) ? $_SESSION['wa_errors'] : [];
         unset($_SESSION['wa_form_data'], $_SESSION['wa_errors']);
 
         $response = $this->view('whatsapp/config', [
@@ -43,7 +49,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    private function saveConfig(): string
+    private function saveConfig()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -79,7 +85,7 @@ class WhatsAppController extends Controller
         redirect(route('whatsapp_config'));
     }
 
-    public function logs(): array
+    public function logs()
     {
         $this->requireRole('admin');
         $limit = isset($_GET['limit']) ? max(10, (int) $_GET['limit']) : 100;
@@ -100,7 +106,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    public function templates(): array
+    public function templates()
     {
         $this->requireRole('admin');
 
@@ -131,7 +137,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    public function editTemplate(): array
+    public function editTemplate()
     {
         $this->requireRole('admin');
 
@@ -158,7 +164,7 @@ class WhatsAppController extends Controller
         return $response;
     }
 
-    public function saveTemplate(): string
+    public function saveTemplate()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -198,12 +204,12 @@ class WhatsAppController extends Controller
         redirect(route('whatsapp_config', ['action' => 'templates']));
     }
 
-    public function updateTemplate(): string
+    public function updateTemplate()
     {
         return $this->saveTemplate();
     }
 
-    public function deleteTemplate(): string
+    public function deleteTemplate()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -231,7 +237,7 @@ class WhatsAppController extends Controller
         redirect(route('whatsapp_config', ['action' => 'templates']));
     }
 
-    private function sanitizeConfig(array $input): array
+    private function sanitizeConfig($input)
     {
         return [
             'api_key' => trim($input['api_key'] ?? ''),
@@ -246,7 +252,7 @@ class WhatsAppController extends Controller
         ];
     }
 
-    private function validateConfig(array $data): array
+    private function validateConfig($data)
     {
         $errors = [];
 
@@ -273,7 +279,7 @@ class WhatsAppController extends Controller
         return $errors;
     }
 
-    private function sanitizeTemplate(array $input): array
+    private function sanitizeTemplate($input)
     {
         return [
             'id' => $input['id'] ?? null,
@@ -290,7 +296,7 @@ class WhatsAppController extends Controller
         ];
     }
 
-    private function validateTemplate(array $data): array
+    private function validateTemplate($data)
     {
         $errors = [];
 
@@ -309,7 +315,7 @@ class WhatsAppController extends Controller
         return $errors;
     }
 
-    private function assertPost(): void
+    private function assertPost()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             http_response_code(405);
