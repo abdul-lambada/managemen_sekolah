@@ -1,12 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 class User extends Model
 {
     protected $table = 'users';
 
-    public function findByName(string $name): ?array
+    public function findByName($name)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE name = :name LIMIT 1");
         $stmt->execute(['name' => $name]);
@@ -14,7 +12,7 @@ class User extends Model
         return $row ?: null;
     }
 
-    public function findByEmail(string $email): ?array
+    public function findByEmail($email)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE email = :email LIMIT 1");
         $stmt->execute(['email' => $email]);
@@ -22,7 +20,7 @@ class User extends Model
         return $row ?: null;
     }
 
-    public function findById(int $id): ?array
+    public function findById($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id LIMIT 1");
         $stmt->execute(['id' => $id]);
@@ -30,7 +28,7 @@ class User extends Model
         return $row ?: null;
     }
 
-    public function updatePassword(int $id, string $hashedPassword): void
+    public function updatePassword($id, $hashedPassword)
     {
         $stmt = $this->db->prepare("UPDATE {$this->table} SET password = :password, updated_at = NOW() WHERE id = :id");
         $stmt->execute([
@@ -39,7 +37,7 @@ class User extends Model
         ]);
     }
 
-    public function createResetToken(int $userId, string $selector, string $tokenHash, DateTimeImmutable $expiresAt): void
+    public function createResetToken($userId, $selector, $tokenHash, DateTimeImmutable $expiresAt)
     {
         $stmt = $this->db->prepare('INSERT INTO password_resets (user_id, selector, token_hash, expires_at) VALUES (:user_id, :selector, :token_hash, :expires_at)');
         $stmt->execute([
