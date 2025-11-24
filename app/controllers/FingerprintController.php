@@ -571,7 +571,7 @@ class FingerprintController extends Controller
             // Prioritaskan nama template umum untuk kehadiran jika tersedia
             $names = ['absensi_guru', 'absensi_siswa', 'absensi_kehadiran', 'absensi_info'];
             $in = implode(',', array_fill(0, count($names), '?'));
-            $stmt = db()->prepare("SELECT name FROM whatsapp_message_templates WHERE is_active = 1 AND name IN ($in) ORDER BY FIELD(name, " . implode(',', array_map(fn($n)=>"'".$n."'", $names)) . ") LIMIT 1");
+            $stmt = db()->prepare("SELECT name FROM whatsapp_message_templates WHERE is_active = 1 AND name IN ($in) ORDER BY FIELD(name, " . implode(',', array_map(function($n) { return "'".$n."'"; }, $names)) . ") LIMIT 1");
             $stmt->execute($names);
             $row = $stmt->fetch();
             if ($row && !empty($row['name'])) {
