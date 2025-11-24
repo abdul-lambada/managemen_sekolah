@@ -1,22 +1,20 @@
 <?php
 
-declare(strict_types=1);
-
 final class AbsensiSiswaHarianController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
         $this->requireRole('admin');
 
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
+        $start = isset($_GET['start']) ? $_GET['start'] : null;
+        $end = isset($_GET['end']) ? $_GET['end'] : null;
         $kelasId = isset($_GET['kelas']) && $_GET['kelas'] !== '' ? (int) $_GET['kelas'] : null;
 
         $model = new KehadiranSiswaHarian();
-        $records = $model->allWithSiswa($start ?: null, $end ?: null, $kelasId);
+        $records = $model->allWithSiswa(($start ? $start : null), ($end ? $end : null), $kelasId);
         $kelasOptions = $model->kelasOptions();
 
-        $export = $_GET['export'] ?? null;
+        $export = isset($_GET['export']) ? $_GET['export'] : null;
         if ($export === 'csv') {
             $this->exportCsv($records, $start, $end, $kelasId);
         }
@@ -38,7 +36,7 @@ final class AbsensiSiswaHarianController extends Controller
         return $response;
     }
 
-    private function exportCsv(array $records, ?string $start, ?string $end, ?int $kelasId): void
+    private function exportCsv($records, $start, $end, $kelasId)
     {
         $suffix = ($start ?: 'all') . '_' . ($end ?: date('Ymd'));
         $filename = 'rekap_harian_siswa_' . $suffix . '_' . date('His') . '.csv';
