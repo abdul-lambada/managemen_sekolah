@@ -62,11 +62,19 @@ $pengaduan = $pengaduan ?? [];
                                     <div class="small text-muted"><?= sanitize(mb_strimwidth($item['isi_pengaduan'], 0, 80, '...')) ?></div>
                                 </td>
                                 <td>
-                                    <span class="badge badge-<?= match ($item['status']) {
-                                        'pending' => 'warning',
-                                        'diproses' => 'info',
-                                        'selesai' => 'success',
-                                        default => 'secondary'
+                                    <span class="badge badge-<?php 
+                                    switch ($item['status']) {
+                                        case 'pending':
+                                            echo 'warning';
+                                            break;
+                                        case 'diproses':
+                                            echo 'info';
+                                            break;
+                                        case 'selesai':
+                                            echo 'success';
+                                            break;
+                                        default:
+                                            echo 'secondary';
                                     } ?>">
                                         <?= sanitize(ucfirst($item['status'])) ?>
                                     </span>
