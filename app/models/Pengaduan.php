@@ -1,19 +1,17 @@
 <?php
 
-declare(strict_types=1);
-
 final class Pengaduan extends Model
 {
-    protected string $table = 'pengaduan';
-    protected string $primaryKey = 'id_pengaduan';
+    protected $table = 'pengaduan';
+    protected $primaryKey = 'id_pengaduan';
 
-    public function allOrdered(): array
+    public function allOrdered()
     {
         $stmt = $this->db->query("SELECT * FROM {$this->table} ORDER BY tanggal_pengaduan DESC");
         return $stmt->fetchAll();
     }
 
-    public function createPengaduan(array $data): int
+    public function createPengaduan($data)
     {
         return $this->create($data);
     }
