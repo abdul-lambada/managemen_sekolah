@@ -1,34 +1,34 @@
 <?php
 
-declare(strict_types=1);
-
 abstract class Model
 {
-    protected PDO $db;
-    protected string $table;
-    protected string $primaryKey = 'id';
+    protected $db;
+    protected $table;
+    protected $primaryKey = 'id';
 
     public function __construct()
     {
         $this->db = db();
     }
 
-    public function all(): array
+    public function all()
     {
         $stmt = $this->db->query("SELECT * FROM {$this->table}");
         return $stmt->fetchAll();
     }
 
-    public function find(int|string $id, ?string $key = null): ?array
+    public function find($id, $key = null)
     {
-        $key ??= $this->primaryKey;
+        if ($key === null) {
+            $key = $this->primaryKey;
+        }
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$key} = :id LIMIT 1");
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
 
-    public function create(array $data): int
+    public function create($data)
     {
         $keys = array_keys($data);
         $columns = implode(', ', $keys);
@@ -41,14 +41,16 @@ abstract class Model
         return (int) $this->db->lastInsertId();
     }
 
-    public function update(int|string $id, array $data, ?string $key = null): bool
+    public function update($id, $data, $key = null)
     {
         $sets = [];
         foreach ($data as $column => $value) {
             $sets[] = "{$column} = :{$column}";
         }
 
-        $key ??= $this->primaryKey;
+        if ($key === null) {
+            $key = $this->primaryKey;
+        }
         $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE {$key} = :id";
         $data['id'] = $id;
 
@@ -56,14 +58,16 @@ abstract class Model
         return $stmt->execute($data);
     }
 
-    public function delete(int|string $id, ?string $key = null): bool
+    public function delete($id, $key = null)
     {
-        $key ??= $this->primaryKey;
+        if ($key === null) {
+            $key = $this->primaryKey;
+        }
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE {$key} = :id");
         return $stmt->execute(['id' => $id]);
     }
 
-    public function count(array $conditions = []): int
+    public function count($conditions = [])
     {
         if (empty($conditions)) {
             return (int) $this->db->query("SELECT COUNT(*) FROM {$this->table}")->fetchColumn();
@@ -81,7 +85,7 @@ abstract class Model
         return (int) $stmt->fetchColumn();
     }
 
-    public function latest(string $orderBy = 'created_at', int $limit = 5): array
+    public function latest($orderBy = 'created_at', $limit = 5)
     {
         $sql = "SELECT * FROM {$this->table} ORDER BY {$orderBy} DESC LIMIT :limit";
         $stmt = $this->db->prepare($sql);
@@ -91,7 +95,7 @@ abstract class Model
         return $stmt->fetchAll();
     }
 
-    public function paginate(int $page = 1, int $perPage = 10): array
+    public function paginate($page = 1, $perPage = 10)
     {
         $offset = ($page - 1) * $perPage;
         $stmt = $this->db->prepare("SELECT SQL_CALC_FOUND_ROWS * FROM {$this->table} LIMIT :offset, :limit");
