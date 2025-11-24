@@ -1,25 +1,23 @@
 <?php
 
-declare(strict_types=1);
-
 class LaporanAbsensiController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
         $this->requireRole('admin', 'guru');
 
-        $periode = $_GET['periode'] ?? 'Bulanan';
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
+        $periode = isset($_GET['periode']) ? $_GET['periode'] : 'Bulanan';
+        $start = isset($_GET['start']) ? $_GET['start'] : null;
+        $end = isset($_GET['end']) ? $_GET['end'] : null;
 
         $model = new LaporanAbsensi();
-        $reports = $model->summary($start ?: null, $end ?: null, $periode ?: 'Bulanan');
+        $reports = $model->summary(($start ? $start : null), ($end ? $end : null), ($periode ? $periode : 'Bulanan'));
 
-        $export = $_GET['export'] ?? null;
+        $export = isset($_GET['export']) ? $_GET['export'] : null;
 
         if (in_array($export, ['csv', 'pdf', 'excel'], true)) {
             $headers = ['Periode', 'Tanggal Mulai', 'Tanggal Akhir', 'Jumlah Hadir', 'Jumlah Tidak Hadir'];
-            $rows = array_map(static function (array $report): array {
+            $rows = array_map(function ($report) {
                 return [
                     $report['periode'],
                     $report['tanggal_mulai'],
@@ -54,7 +52,7 @@ class LaporanAbsensiController extends Controller
         return $response;
     }
 
-    private function exportGeneric(string $export, string $filename, string $title, array $headers, array $rows): void
+    private function exportGeneric($export, $filename, $title, $headers, $rows)
     {
         if ($export === 'pdf') {
             export_array_to_pdf($filename, $title, $headers, $rows, 'landscape');
