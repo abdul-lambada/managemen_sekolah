@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class Siswa extends Model
 {
-    protected string $table = 'siswa';
-    protected string $primaryKey = 'id_siswa';
+    protected $table = 'siswa';
+    protected $primaryKey = 'id_siswa';
 
-    public function allWithRelations(): array
+    public function allWithRelations()
     {
         $sql = "SELECT s.*, k.nama_kelas, j.nama_jurusan, u.name AS user_name
                 FROM siswa s
@@ -18,7 +16,7 @@ class Siswa extends Model
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function findWithRelations(int $id): ?array
+    public function findWithRelations($id)
     {
         $stmt = $this->db->prepare(
             "SELECT s.*, k.nama_kelas, j.nama_jurusan, u.name AS user_name
@@ -33,7 +31,7 @@ class Siswa extends Model
         return $row ?: null;
     }
 
-    public function byKelas(int $kelasId): array
+    public function byKelas($kelasId)
     {
         $stmt = $this->db->prepare(
             "SELECT s.*, u.name AS user_name
@@ -46,7 +44,7 @@ class Siswa extends Model
         return $stmt->fetchAll();
     }
 
-    public function findByUserId(int $userId): ?array
+    public function findByUserId($userId)
     {
         $stmt = $this->db->prepare(
             "SELECT s.*, k.nama_kelas, j.nama_jurusan

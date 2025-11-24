@@ -1,25 +1,30 @@
 <?php
 
-declare(strict_types=1);
-
 class SiswaController extends Controller
 {
-    public function index(): array|string
+    public function index()
     {
-        $action = $_GET['action'] ?? 'list';
+        $action = isset($_GET['action']) ? $_GET['action'] : 'list';
 
-        return match ($action) {
-            'create' => $this->create(),
-            'store' => $this->store(),
-            'edit' => $this->edit(),
-            'update' => $this->update(),
-            'delete' => $this->delete(),
-            'show' => $this->show(),
-            default => $this->listing(),
-        };
+        switch ($action) {
+            case 'create':
+                return $this->create();
+            case 'store':
+                return $this->store();
+            case 'edit':
+                return $this->edit();
+            case 'update':
+                return $this->update();
+            case 'delete':
+                return $this->delete();
+            case 'show':
+                return $this->show();
+            default:
+                return $this->listing();
+        }
     }
 
-    private function listing(): array
+    private function listing()
     {
         $this->requireRole('admin');
 
@@ -49,7 +54,7 @@ class SiswaController extends Controller
         return $response;
     }
 
-    private function show(): array
+    private function show()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -87,7 +92,7 @@ class SiswaController extends Controller
         return $response;
     }
 
-    private function create(): array
+    private function create()
     {
         $this->requireRole('admin');
 
@@ -113,7 +118,7 @@ class SiswaController extends Controller
         return $response;
     }
 
-    private function edit(): array
+    private function edit()
     {
         $this->requireRole('admin');
         $id = (int) ($_GET['id'] ?? 0);
@@ -150,7 +155,7 @@ class SiswaController extends Controller
         return $response;
     }
 
-    private function store(): string
+    private function store()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -182,7 +187,7 @@ class SiswaController extends Controller
         redirect(route('siswa'));
     }
 
-    private function update(): string
+    private function update()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -220,7 +225,7 @@ class SiswaController extends Controller
         redirect(route('siswa'));
     }
 
-    private function delete(): string
+    private function delete()
     {
         $this->requireRole('admin');
         $this->assertPost();
@@ -247,7 +252,7 @@ class SiswaController extends Controller
         redirect(route('siswa'));
     }
 
-    private function sanitizeInput(array $input): array
+    private function sanitizeInput($input)
     {
         return [
             'id' => (int) ($input['id'] ?? 0),
@@ -263,7 +268,7 @@ class SiswaController extends Controller
         ];
     }
 
-    private function validate(array $data, bool $isUpdate = false): array
+    private function validate($data, $isUpdate = false)
     {
         $errors = [];
 
@@ -305,7 +310,7 @@ class SiswaController extends Controller
         return $errors;
     }
 
-    private function mapToDb(array $data): array
+    private function mapToDb($data)
     {
         return [
             'nama_siswa' => $data['nama_siswa'],
@@ -320,13 +325,13 @@ class SiswaController extends Controller
         ];
     }
 
-    private function kelasOptions(): array
+    private function kelasOptions()
     {
         $kelas = new Kelas();
         return $kelas->options();
     }
 
-    private function userOptions(?int $currentUserId = null): array
+    private function userOptions($currentUserId = null)
     {
         $pdo = db();
 
@@ -336,10 +341,14 @@ class SiswaController extends Controller
              SELECT user_id FROM siswa WHERE user_id IS NOT NULL"
         );
         $usedIds = array_map('intval', $usedStmt->fetchAll(PDO::FETCH_COLUMN));
-        $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id > 0));
+        $usedIds = array_values(array_filter($usedIds, function ($id) {
+            return (int) $id > 0;
+        }));
 
         if ($currentUserId !== null && $currentUserId > 0) {
-            $usedIds = array_values(array_filter($usedIds, static fn (int $id): bool => $id !== $currentUserId));
+            $usedIds = array_values(array_filter($usedIds, function ($id) use ($currentUserId) {
+                return (int) $id !== (int) $currentUserId;
+            }));
         }
 
         $params = [];
@@ -377,7 +386,7 @@ class SiswaController extends Controller
         return $options;
     }
 
-    private function assertPost(): void
+    private function assertPost()
     {
         if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
             http_response_code(405);
