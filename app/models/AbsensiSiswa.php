@@ -1,13 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 class AbsensiSiswa extends Model
 {
-    protected string $table = 'absensi_siswa';
-    protected string $primaryKey = 'id_absensi_siswa';
+    protected $table = 'absensi_siswa';
+    protected $primaryKey = 'id_absensi_siswa';
 
-    public function allWithSiswa(?string $startDate = null, ?string $endDate = null, ?int $kelasId = null): array
+    public function allWithSiswa($startDate = null, $endDate = null, $kelasId = null)
     {
         $conditions = [];
         $params = [];
@@ -46,7 +44,7 @@ class AbsensiSiswa extends Model
         return $stmt->fetchAll();
     }
 
-    public function recentForStudent(int $siswaId, int $days = 14, int $limit = 30): array
+    public function recentForStudent($siswaId, $days = 14, $limit = 30)
     {
         $startDate = date('Y-m-d', strtotime(sprintf('-%d days', $days)));
 
@@ -67,7 +65,7 @@ class AbsensiSiswa extends Model
         return $stmt->fetchAll();
     }
 
-    public function summaryForStudent(int $siswaId, ?string $startDate = null, ?string $endDate = null): array
+    public function summaryForStudent($siswaId, $startDate = null, $endDate = null)
     {
         $conditions = ['id_siswa = :siswa'];
         $params = ['siswa' => $siswaId];
@@ -111,7 +109,7 @@ class AbsensiSiswa extends Model
         return $result;
     }
 
-    public function byStudent(int $siswaId, ?string $startDate = null, ?string $endDate = null): array
+    public function byStudent($siswaId, $startDate = null, $endDate = null)
     {
         $conditions = ['asw.id_siswa = :siswa'];
         $params = ['siswa' => $siswaId];
