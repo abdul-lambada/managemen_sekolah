@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 final class ActivityLog extends Model
 {
-    protected string $table = 'activity_logs';
-    protected string $primaryKey = 'id';
+    /** @var string */
+    protected $table = 'activity_logs';
+    
+    /** @var string */
+    protected $primaryKey = 'id';
 
     public function record(?int $userId, string $action, ?string $description = null): void
     {
@@ -19,7 +22,7 @@ final class ActivityLog extends Model
         ]);
     }
 
-    public function latest(string $orderBy = 'created_at', int $limit = 20): array
+    public function latest($orderBy = 'created_at', $limit = 20)
     {
         $orderBy = in_array($orderBy, ['created_at', 'id'], true) ? $orderBy : 'created_at';
 
