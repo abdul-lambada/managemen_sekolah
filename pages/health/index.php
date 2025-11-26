@@ -31,12 +31,20 @@ function format_bytes_simple(?int $bytes): string
                         <?php foreach ($checks['cron'] as $key => $item): ?>
                             <?php
                             $status = $item['status'] ?? 'unknown';
-                            $badgeClass = match ($status) {
-                                'success' => 'success',
-                                'warning' => 'warning',
-                                'error' => 'danger',
-                                default => 'secondary',
-                            };
+                            switch ($status) {
+                                case 'success':
+                                    $badgeClass = 'success';
+                                    break;
+                                case 'warning':
+                                    $badgeClass = 'warning';
+                                    break;
+                                case 'error':
+                                    $badgeClass = 'danger';
+                                    break;
+                                default:
+                                    $badgeClass = 'secondary';
+                                    break;
+                            }
                             ?>
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-center">

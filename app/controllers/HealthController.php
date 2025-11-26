@@ -130,12 +130,16 @@ final class HealthController extends Controller
 
     private function statusLabel(string $status): string
     {
-        return match ($status) {
-            'success' => 'Normal',
-            'warning' => 'Perlu Perhatian',
-            'error' => 'Gagal',
-            default => 'Tidak Diketahui',
-        };
+        switch ($status) {
+            case 'success':
+                return 'Normal';
+            case 'warning':
+                return 'Perlu Perhatian';
+            case 'error':
+                return 'Gagal';
+            default:
+                return 'Tidak Diketahui';
+        }
     }
 
     private function getDirectorySize(string $path): ?int
