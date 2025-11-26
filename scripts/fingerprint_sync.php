@@ -765,7 +765,9 @@ exit($summary['total_failure'] > 0 ? 2 : 0);
  */
 function pullAttendanceFromDevice($device)
 {
-    // Guard minimal PHP version for ZKLib integration
+    // IMPORTANT: Guard minimal PHP version for ZKLib integration
+    // Requirement: PHP 7.3+ (konsisten dengan composer.json dan CRUD lainnya)
+    // DO NOT change this to PHP 8.1+ - library aditia-dev/zklib kompatibel dengan PHP 7.3
     if (PHP_VERSION_ID < 70300) {
         throw new RuntimeException('PHP 7.3+ diperlukan untuk modul ZKLib. Versi saat ini: ' . PHP_VERSION . '. Mohon jalankan script pada PHP 7.3+ atau sediakan bridge eksternal.');
     }
