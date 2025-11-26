@@ -3,7 +3,7 @@
         'name' => 'managemen_sekolah/app',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '60b1dead1fa8cd028f3db734f9816d437d0eec0f',
+        'reference' => 'f06a3d7fd903f19e2fb53a1db7cd9bf22947d942',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -51,7 +51,7 @@
         'managemen_sekolah/app' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '60b1dead1fa8cd028f3db734f9816d437d0eec0f',
+            'reference' => 'f06a3d7fd903f19e2fb53a1db7cd9bf22947d942',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

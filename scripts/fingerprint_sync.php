@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 $basePath = dirname(__DIR__);
 require_once $basePath . '/config/app.php';
 require_once $basePath . '/config/database.php';
@@ -13,7 +11,7 @@ date_default_timezone_set('Asia/Jakarta');
 /**
  * Output helpers that work in CLI and non-CLI contexts.
  */
-function out(string $message): void
+function out($message)
 {
     if (PHP_SAPI === 'cli') {
         $h = @fopen('php://stdout', 'w');
@@ -22,7 +20,7 @@ function out(string $message): void
     echo $message;
 }
 
-function err(string $message): void
+function err($message)
 {
     if (PHP_SAPI === 'cli') {
         $h = @fopen('php://stderr', 'w');
@@ -36,7 +34,7 @@ $pdo = db();
 /**
  * Ensure unique index on absensi_guru_mapel(id_jadwal, tanggal) to prevent duplicates.
  */
-function ensureAbsensiMapelUniqueIndex(PDO $pdo): void
+function ensureAbsensiMapelUniqueIndex($pdo)
 {
     try {
         $stmt = $pdo->prepare("SELECT COUNT(1) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'absensi_guru_mapel' AND index_name = 'uniq_jadwal_tanggal'");
@@ -45,7 +43,7 @@ function ensureAbsensiMapelUniqueIndex(PDO $pdo): void
         if (!$exists) {
             $pdo->exec("ALTER TABLE absensi_guru_mapel ADD UNIQUE KEY uniq_jadwal_tanggal (id_jadwal, tanggal)");
         }
-    } catch (Throwable $e) {
+    } catch (Exception $e) {
         // ignore if lacking privilege; system will still function without the index
     }
 }
@@ -53,7 +51,7 @@ function ensureAbsensiMapelUniqueIndex(PDO $pdo): void
 /**
  * Map fingerprint UID to siswa_id if mapping table exists.
  */
-function mapFingerprintToSiswa(PDO $pdo, string $fingerprintUid): ?int
+function mapFingerprintToSiswa($pdo, $fingerprintUid)
 {
     try {
         $existsStmt = $pdo->prepare("SELECT COUNT(1) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'siswa_fingerprint'");
@@ -69,12 +67,12 @@ function mapFingerprintToSiswa(PDO $pdo, string $fingerprintUid): ?int
             return null;
         }
         return (int) $id;
-    } catch (Throwable $e) {
+    } catch (Exception $e) {
         return null;
     }
 }
 
-function ensureDailyAttendanceStudentTable(PDO $pdo): void
+function ensureDailyAttendanceStudentTable($pdo)
 {
     static $ensured = false;
     if ($ensured) return;
@@ -96,12 +94,12 @@ function ensureDailyAttendanceStudentTable(PDO $pdo): void
     try {
         $pdo->exec($sql);
         $ensured = true;
-    } catch (Throwable $e) {
+    } catch (Exception $e) {
         // ignore
     }
 }
 
-function upsertDailyAttendanceStudent(PDO $pdo, int $siswaId, string $date, array $fields): void
+function upsertDailyAttendanceStudent($pdo, $siswaId, $date, $fields)
 {
     ensureDailyAttendanceStudentTable($pdo);
     $stmt = $pdo->prepare('SELECT id, check_in_pagi, check_out_sore FROM kehadiran_siswa_harian WHERE siswa_id = :sid AND tanggal = :tanggal LIMIT 1');
@@ -130,13 +128,13 @@ function upsertDailyAttendanceStudent(PDO $pdo, int $siswaId, string $date, arra
         ->execute([
             'sid' => $siswaId,
             'tanggal' => $date,
-            'in' => $fields['check_in_pagi'] ?? null,
-            'out' => $fields['check_out_sore'] ?? null,
+            'in' => isset($fields['check_in_pagi']) ? $fields['check_in_pagi'] : null,
+            'out' => isset($fields['check_out_sore']) ? $fields['check_out_sore'] : null,
             'sumber' => 'fingerprint',
         ]);
 }
 
-function processDailyAttendanceStudents(PDO $pdo, array $entries): int
+function processDailyAttendanceStudents($pdo, $entries)
 {
     if (empty($entries)) return 0;
     $win = getAttendanceWindows();
@@ -178,7 +176,7 @@ if (!$devices) {
     exit(0);
 }
 
-function processScheduleAttendance(PDO $pdo, array $entries, array $device): array
+function processScheduleAttendance($pdo, $entries, $device)
 {
     $processed = 0;
     $lateNotifications = [];
@@ -225,7 +223,7 @@ function processScheduleAttendance(PDO $pdo, array $entries, array $device): arr
     ];
 }
 
-function queueLateNotification(PDO $pdo, array $data): void
+function queueLateNotification($pdo, $data)
 {
     $attendanceDate = substr($data['timestamp'], 0, 10);
 
@@ -284,7 +282,7 @@ function queueLateNotification(PDO $pdo, array $data): void
     ]);
 }
 
-function hasLateNotification(PDO $pdo, int $guruId, string $date): bool
+function hasLateNotification($pdo, $guruId, $date)
 {
     $stmt = $pdo->prepare(
         'SELECT id FROM whatsapp_automation_logs WHERE user_type = :type AND user_id = :user AND notification_type = :notification AND attendance_date = :date LIMIT 1'
@@ -299,7 +297,7 @@ function hasLateNotification(PDO $pdo, int $guruId, string $date): bool
     return (bool) $stmt->fetchColumn();
 }
 
-function fetchGuruContact(PDO $pdo, int $guruId): ?array
+function fetchGuruContact($pdo, $guruId)
 {
     $stmt = $pdo->prepare('SELECT nama_guru, phone FROM guru WHERE id_guru = :id LIMIT 1');
     $stmt->execute(['id' => $guruId]);
@@ -309,12 +307,12 @@ function fetchGuruContact(PDO $pdo, int $guruId): ?array
         return null;
     }
 
-    $row['phone'] = trim((string) ($row['phone'] ?? ''));
+    $row['phone'] = trim(isset($row['phone']) ? $row['phone'] : '');
 
     return $row;
 }
 
-function getWhatsAppTemplate(PDO $pdo, string $name): ?array
+function getWhatsAppTemplate($pdo, $name)
 {
     static $cache = [];
 
@@ -333,7 +331,7 @@ function getWhatsAppTemplate(PDO $pdo, string $name): ?array
     return $template ?: null;
 }
 
-function renderTemplateBody(string $body, array $variables): string
+function renderTemplateBody($body, $variables)
 {
     $message = $body;
 
@@ -344,7 +342,7 @@ function renderTemplateBody(string $body, array $variables): string
     return $message;
 }
 
-function mapFingerprintToGuru(PDO $pdo, string $fingerprintUid): ?int
+function mapFingerprintToGuru($pdo, $fingerprintUid)
 {
     $stmt = $pdo->prepare('SELECT id_guru FROM guru_fingerprint WHERE fingerprint_uid = :uid LIMIT 1');
     $stmt->execute(['uid' => $fingerprintUid]);
@@ -357,7 +355,7 @@ function mapFingerprintToGuru(PDO $pdo, string $fingerprintUid): ?int
     return (int) $id;
 }
 
-function findJadwalForEntry(PDO $pdo, int $guruId, string $timestamp): ?array
+function findJadwalForEntry($pdo, $guruId, $timestamp)
 {
     $dateTime = new DateTime($timestamp);
     $hari = indoDayName($dateTime);
@@ -397,7 +395,7 @@ function findJadwalForEntry(PDO $pdo, int $guruId, string $timestamp): ?array
     return null;
 }
 
-function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $time, string $status): array
+function upsertAbsensiMapel($pdo, $jadwal, $tanggal, $time, $status)
 {
     $stmt = $pdo->prepare('SELECT * FROM absensi_guru_mapel WHERE id_jadwal = :id AND tanggal = :tanggal LIMIT 1');
     $stmt->execute([
@@ -483,7 +481,7 @@ function upsertAbsensiMapel(PDO $pdo, array $jadwal, string $tanggal, string $ti
     ];
 }
 
-function insertAbsensiMapelLog(PDO $pdo, int $absensiId, int $jadwalId, string $fingerprintUid, string $timestamp, string $status, array $entry): void
+function insertAbsensiMapelLog($pdo, $absensiId, $jadwalId, $fingerprintUid, $timestamp, $status, $entry)
 {
     $pdo->prepare(
         'INSERT INTO absensi_guru_mapel_log (id_absensi_mapel, id_jadwal, fingerprint_user_id, timestamp, status, payload)
@@ -501,7 +499,7 @@ function insertAbsensiMapelLog(PDO $pdo, int $absensiId, int $jadwalId, string $
 /**
  * Daily attendance processing (pagi/pulang) for teachers.
  */
-function getAttendanceWindows(): array
+function getAttendanceWindows()
 {
     // Default windows
     $defaults = [
@@ -514,10 +512,10 @@ function getAttendanceWindows(): array
     try {
         $settings = app_settings();
         $overrides = [
-            'morning_start' => $settings['attendance_morning_start'] ?? null,
-            'morning_end' => $settings['attendance_morning_end'] ?? null,
-            'evening_start' => $settings['attendance_evening_start'] ?? null,
-            'evening_end' => $settings['attendance_evening_end'] ?? null,
+            'morning_start' => isset($settings['attendance_morning_start']) ? $settings['attendance_morning_start'] : null,
+            'morning_end' => isset($settings['attendance_morning_end']) ? $settings['attendance_morning_end'] : null,
+            'evening_start' => isset($settings['attendance_evening_start']) ? $settings['attendance_evening_start'] : null,
+            'evening_end' => isset($settings['attendance_evening_end']) ? $settings['attendance_evening_end'] : null,
         ];
 
         foreach ($overrides as $k => $v) {
@@ -525,14 +523,14 @@ function getAttendanceWindows(): array
                 $defaults[$k] = $v;
             }
         }
-    } catch (Throwable $e) {
+    } catch (Exception $e) {
         // fallback to defaults
     }
 
     return $defaults;
 }
 
-function ensureDailyAttendanceTable(PDO $pdo): void
+function ensureDailyAttendanceTable($pdo)
 {
     static $ensured = false;
     if ($ensured) {
@@ -557,17 +555,17 @@ function ensureDailyAttendanceTable(PDO $pdo): void
     $ensured = true;
 }
 
-function withinMorningWindow(string $time, array $win): bool
+function withinMorningWindow($time, $win)
 {
     return $time >= $win['morning_start'] && $time <= $win['morning_end'];
 }
 
-function withinEveningWindow(string $time, array $win): bool
+function withinEveningWindow($time, $win)
 {
     return $time >= $win['evening_start'] && $time <= $win['evening_end'];
 }
 
-function upsertDailyAttendance(PDO $pdo, int $guruId, string $date, array $fields): void
+function upsertDailyAttendance($pdo, $guruId, $date, $fields)
 {
     ensureDailyAttendanceTable($pdo);
 
@@ -603,13 +601,13 @@ function upsertDailyAttendance(PDO $pdo, int $guruId, string $date, array $field
         ->execute([
             'guru' => $guruId,
             'tanggal' => $date,
-            'in' => $fields['check_in_pagi'] ?? null,
-            'out' => $fields['check_out_sore'] ?? null,
+            'in' => isset($fields['check_in_pagi']) ? $fields['check_in_pagi'] : null,
+            'out' => isset($fields['check_out_sore']) ? $fields['check_out_sore'] : null,
             'sumber' => 'fingerprint',
         ]);
 }
 
-function processDailyAttendance(PDO $pdo, array $entries): int
+function processDailyAttendance($pdo, $entries)
 {
     if (empty($entries)) {
         return 0;
@@ -650,7 +648,7 @@ function processDailyAttendance(PDO $pdo, array $entries): int
     return $processed;
 }
 
-function indoDayName(DateTime $dateTime): string
+function indoDayName($dateTime)
 {
     $names = [
         'Monday' => 'Senin',
@@ -729,7 +727,7 @@ foreach ($devices as $device) {
             'late_notices' => $lateCount,
         ];
         $summary['total_success']++;
-    } catch (Throwable $e) {
+    } catch (Exception $e) {
         logFingerprint($pdo, 'sync', $e->getMessage(), 'error', $deviceInfo);
         err("[ERROR] {$deviceInfo}: {$e->getMessage()}\n");
         $summary['devices'][] = [
@@ -765,7 +763,7 @@ exit($summary['total_failure'] > 0 ? 2 : 0);
  *   ...
  * ]
  */
-function pullAttendanceFromDevice(array $device): array
+function pullAttendanceFromDevice($device)
 {
     // Guard minimal PHP version for ZKLib integration
     if (PHP_VERSION_ID < 70300) {
@@ -800,7 +798,7 @@ function pullAttendanceFromDevice(array $device): array
         return [];
     }
 
-    return array_map(static function ($record): array {
+    return array_map(function ($record) {
         return [
             'user_id' => $record['uid'] ?? $record['id'] ?? null,
             'user_name' => $record['id'] ?? null,
@@ -814,7 +812,7 @@ function pullAttendanceFromDevice(array $device): array
 /**
  * Persist attendance entries into tbl_kehadiran.
  */
-function persistAttendance(PDO $pdo, array $entries, array $device): int
+function persistAttendance($pdo, $entries, $device)
 {
     if (empty($entries)) {
         return 0;
@@ -841,7 +839,7 @@ function persistAttendance(PDO $pdo, array $entries, array $device): int
 /**
  * Write log into fingerprint_logs table.
  */
-function logFingerprint(PDO $pdo, string $action, string $message, string $status, string $context): void
+function logFingerprint($pdo, $action, $message, $status, $context)
 {
     $stmt = $pdo->prepare('INSERT INTO fingerprint_logs (action, message, status, created_at) VALUES (:action, :message, :status, NOW())');
     $stmt->execute([
@@ -851,7 +849,7 @@ function logFingerprint(PDO $pdo, string $action, string $message, string $statu
     ]);
 }
 
-function updateSystemStat(PDO $pdo, string $key, string $value): void
+function updateSystemStat($pdo, $key, $value)
 {
     $stmt = $pdo->prepare('INSERT INTO system_stats (stat_key, stat_value, updated_at) VALUES (:key1, :value1, NOW()) ON DUPLICATE KEY UPDATE stat_value = :value2, updated_at = NOW()');
     $stmt->execute([
