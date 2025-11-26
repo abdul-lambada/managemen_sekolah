@@ -173,26 +173,73 @@ class GuruController extends Controller
         }
 
         try {
-            $model = new Guru();
+            $pdo = db();
+            $pdo->beginTransaction();
 
-            // Log sebelum create
+            // 1. Buat user account otomatis jika belum ada user_id
+            if (empty($data['user_id'])) {
+                // Generate username dari NIP
+                $username = 'guru_' . $data['nip'];
+                
+                // Cek apakah username sudah ada
+                $userModel = new User();
+                $existingUser = $userModel->findByName($username);
+                
+                if ($existingUser) {
+                    // Jika username sudah ada, tambahkan suffix random
+                    $username = 'guru_' . $data['nip'] . '_' . substr(md5(uniqid()), 0, 4);
+                }
+                
+                // Password default
+                $defaultPassword = 'guru123';
+                $hashedPassword = password_hash($defaultPassword, PASSWORD_DEFAULT);
+                
+                // Insert user
+                $stmt = $pdo->prepare('INSERT INTO users (name, password, role, created_at, updated_at) VALUES (:name, :password, :role, NOW(), NOW())');
+                $stmt->execute([
+                    'name' => $username,
+                    'password' => $hashedPassword,
+                    'role' => 'guru'
+                ]);
+                
+                $userId = (int) $pdo->lastInsertId();
+                $data['user_id'] = $userId;
+                
+                error_log("Auto-created user account: $username (ID: $userId) for guru: {$data['nama_guru']}");
+            }
+
+            // 2. Simpan data guru dengan user_id
+            $model = new Guru();
             error_log("Creating new guru: {$data['nama_guru']} (NIP: {$data['nip']})");
 
             $guruId = $model->create($this->mapToDb($data));
 
             if ($guruId) {
+                $pdo->commit();
                 error_log("Guru created successfully with ID: $guruId");
-                flash('guru_alert', "Data guru <strong>{$data['nama_guru']}</strong> berhasil ditambahkan.", 'success');
+                
+                // Flash message dengan info login jika user baru dibuat
+                if (isset($userId)) {
+                    flash('guru_alert', "Data guru <strong>{$data['nama_guru']}</strong> berhasil ditambahkan.<br>Username: <strong>$username</strong><br>Password default: <strong>guru123</strong><br><small class='text-muted'>Silakan informasikan kredensial ini kepada guru yang bersangkutan.</small>", 'success');
+                } else {
+                    flash('guru_alert', "Data guru <strong>{$data['nama_guru']}</strong> berhasil ditambahkan.", 'success');
+                }
             } else {
                 throw new Exception('Gagal mendapatkan ID guru setelah create');
             }
 
         } catch (PDOException $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log("Database error creating guru: " . $e->getMessage());
             $_SESSION['guru_form_data'] = $data;
             $_SESSION['guru_errors'] = ['Gagal menyimpan data: ' . $e->getMessage()];
             redirect(route('guru', ['action' => 'create']));
         } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log("Error creating guru: " . $e->getMessage());
             $_SESSION['guru_form_data'] = $data;
             $_SESSION['guru_errors'] = ['Gagal menyimpan data: ' . $e->getMessage()];
